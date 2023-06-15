@@ -34,6 +34,6 @@ jobs:
         author_name: Alex Solis
         author_email: alexanderesolis@gmail.com
         message: 'Build the site.'
-        add: './build'
+        add: './build --force'
     
     
