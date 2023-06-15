@@ -2,8 +2,8 @@
 deployment:
   tasks:
     # Next line defines a DEPLOYPATH with the path to the document root of your website so that you will not have to enter it in each command manually:
-    - npm install
-    - npm run build
+    - nodevenv/alexsol.is/10/bin/npm install
+    - nodevenv/alexsol.is/10/bin/npm run build
     - export DEPLOYPATH=/home/alexizys/planner
 
     # This line copies the index.php file to deploy path - the document root of your website:
