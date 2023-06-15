@@ -28,12 +28,14 @@ jobs:
         cache: 'npm'
     - run: npm ci
     - run: npm run build --if-present
-    - name: Commit changes
-      uses: EndBug/add-and-commit@v9
+    - name: Upload files to ftp server
+      uses: ./ 
+      id: upload-to-ftp
       with:
-        author_name: Alex Solis
-        author_email: alexanderesolis@gmail.com
-        message: 'Build the site.'
-        add: './build --force'
-    
+        files: './build/'
+        ftpUsername: ${secrets.FTP_USERNAME}
+        ftpPassword: ${secrets.FTP_PASSWORD}
+        ftpHostname: planner.alexsol.is
+        src: ./
+        dest: './'
     
