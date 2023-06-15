@@ -2,7 +2,7 @@
 deployment:
   tasks:
     # Next line defines a DEPLOYPATH with the path to the document root of your website so that you will not have to enter it in each command manually:
-    - (ls ../../nodevenv/alexsol.is/10/bin/npm) > contents.txt
+    - (ls ../../nodevenv/alexsol.is/10/bin/) > contents.txt
     - ../../nodevenv/alexsol.is/10/bin/npm install
     - ../../nodevenv/alexsol.is/10/bin/npm run build
     - export DEPLOYPATH=/home/alexizys/planner
