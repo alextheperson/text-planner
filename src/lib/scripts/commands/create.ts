@@ -159,5 +159,7 @@ export default [
 	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['file'])], () => {
 		ws.elements = [];
 		ws.fileName = '';
+		wp.setCursorCoords(new Vector2(0, 0));
+		wp.setCanvasCoords(new Vector2(0, 0));
 	})
 ];
