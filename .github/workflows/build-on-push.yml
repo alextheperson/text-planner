@@ -45,5 +45,5 @@ jobs:
         # The local folder to copy, defaults to root project folder
         local_dir: ./build
         # The remote folder to copy to, deafults to root FTP folder
-#         remote_dir: # optional, default is .
+        remote_dir: / # optional, default is .
     
