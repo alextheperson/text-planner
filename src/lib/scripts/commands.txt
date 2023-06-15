@@ -1,0 +1,25 @@
+:g x=num y=num => set the cursor position (the window clamps)
+:border val=on|off => set whether text has a border
+:edit side=start|end => edit a line from that side
+:start
+:end
+:cancel
+                         <-
+view mode -> select mode -> edit mode
+                         <-
+                         -> move mode
+
+
+              ──         │
+                         ⬆
+                         ⭡
+                         ↑ aa
+                         ∧ aaa
+                         ⋀ aa
+           ││││││─       │ aa
+                         │
+   Evaluate the code     │
+                         │
+            b            │
+                         │
+     ──────────────      │

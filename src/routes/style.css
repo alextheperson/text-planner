@@ -1,0 +1,63 @@
+@import '@fontsource/fira-code';
+
+@font-face {
+	font-family: 'Fira Code Full';
+	src: local('Fira Code');
+	unicode-range: U+0000-ffff;
+}
+
+:root {
+	--mono-font: 'Fira Code Full', 'Fira Code', monospace;
+}
+
+body,
+html {
+	margin: 0;
+	height: 100%;
+	overflow: hidden;
+	/* line-height: 1em; */
+	line-height: 1.25em;
+	background: #222;
+	/* color: #241504; */
+}
+
+pre {
+	margin: 0;
+	font-family: var(--mono-font);
+}
+
+.selected {
+	outline: 0.5px solid #0005;
+}
+
+.error {
+	color: #a22;
+}
+
+.warning {
+	color: #c92;
+}
+
+.cursor {
+	backdrop-filter: invert(1);
+	position: absolute;
+	font-family: var(--mono-font);
+	top: 0;
+	left: 0;
+
+	/* animation: blink 1.1s infinite step-end; */
+}
+
+@keyframes blink {
+	0% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0;
+	}
+
+	100% {
+		opacity: 0;
+	}
+}
