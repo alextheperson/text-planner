@@ -101,7 +101,7 @@ function getNextParameters(start: string): Array<string> {
 			currentToken = '';
 		} else {
 			for (let j = 0; j < BRACKETS.length; j++) {
-				if (currentChar === BRACKETS[j]['open'] && previousChar != '\\') {
+				if (currentChar === BRACKETS[j]['open'] && previousChar != '\\' && quotes === null) {
 					quotes = j;
 				} else if (quotes && currentChar === BRACKETS[quotes]['close'] && previousChar !== '\\') {
 					quotes = null;
