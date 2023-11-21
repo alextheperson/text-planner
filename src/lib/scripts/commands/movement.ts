@@ -1,16 +1,18 @@
 import { wp } from '$lib/components/stores';
+import { CommandDefinition } from '../commands';
+import { STATIC_TYPES, Value } from '../dataType';
 import { Bookmark } from '../shapes/bookmark';
 import Vector2 from '../vector';
 import { workspace as ws } from '../workspace';
-import { Pattern, StaticParameter, StringParameter, Vector2Parameter } from './command-definition';
 
-export default [
-	new Pattern([new StaticParameter(['goto']), new Vector2Parameter()], (params) => {
-		wp.setCursorCoords(new Vector2(params[0].getVector().x, params[0].getVector().y));
+new CommandDefinition('goto')
+	.addOverride((params) => {
+		wp.setCursorCoords(params[0].value as Vector2);
 		// `Cursor moved to (${params[0].parsed as number}, ${params[1].parsed as number})`
-	}),
-	new Pattern([new StaticParameter(['goto']), new StringParameter()], (params) => {
-		const targetName = params[0].getString();
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.VECTOR)
+	.addOverride((params) => {
+		const targetName = params[0].value as string;
 		for (let i = 0; i < ws.elements.length; i++) {
 			const currentElement = ws.elements[i];
 			if (
@@ -22,5 +24,6 @@ export default [
 			}
 		}
 		// `Could not find a Bookmark with the name '${targetName}' (case insensitive) in the workspace`
-	})
-];
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.STRING)
+	.register();

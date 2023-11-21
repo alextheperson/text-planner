@@ -7,6 +7,8 @@ import type { Shape } from './shape';
 export class Connector extends Line implements Shape {
 	constructor(startX: number, startY: number, endX: number, endY: number) {
 		super(startX, startY, endX, endY);
+
+		console.log(startX, startY, endX, endY);
 	}
 
 	override render(className: string) {

@@ -1,4 +1,4 @@
-import { parseCommand } from '../commands';
+import { parseExpression } from '../commands';
 import { keymap } from '../keymap';
 import Vector2 from '../vector';
 import { PrefixedLine } from './prefixedLine';
@@ -14,7 +14,7 @@ export class Button extends PrefixedLine implements Shape {
 
 	interact(cursor: Vector2, event: KeyboardEvent): boolean {
 		if (keymap.confirm.includes(event.key)) {
-			parseCommand(this.action);
+			parseExpression(this.action);
 			return true;
 		}
 		return false;

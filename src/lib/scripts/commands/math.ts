@@ -1,7 +1,80 @@
-import { IntParameter, Pattern, StaticParameter, Value } from './command-definition';
+import { CommandDefinition } from '../commands';
+import { STATIC_TYPES, Value } from '../dataType';
 
-export default [
-	new Pattern([new StaticParameter(['add']), new IntParameter(), new IntParameter()], (params) => {
-		return new Value((params[0].getInt() + params[1].getInt()).toString());
-	})
-];
+new CommandDefinition('add')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) + (params[1].value as number),
+				STATIC_TYPES.FLOAT
+			);
+		},
+		STATIC_TYPES.FLOAT,
+		STATIC_TYPES.FLOAT
+	)
+	.register();
+
+new CommandDefinition('sub')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) - (params[1].value as number),
+				STATIC_TYPES.FLOAT
+			);
+		},
+		STATIC_TYPES.FLOAT,
+		STATIC_TYPES.FLOAT
+	)
+	.register();
+
+new CommandDefinition('mult')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) * (params[1].value as number),
+				STATIC_TYPES.FLOAT
+			);
+		},
+		STATIC_TYPES.FLOAT,
+		STATIC_TYPES.FLOAT
+	)
+	.register();
+
+new CommandDefinition('div')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) / (params[1].value as number),
+				STATIC_TYPES.FLOAT
+			);
+		},
+		STATIC_TYPES.FLOAT,
+		STATIC_TYPES.FLOAT
+	)
+	.register();
+
+new CommandDefinition('exp')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) ** (params[1].value as number),
+				STATIC_TYPES.FLOAT
+			);
+		},
+		STATIC_TYPES.FLOAT,
+		STATIC_TYPES.FLOAT
+	)
+	.register();
+
+new CommandDefinition('mod')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) % (params[1].value as number),
+				STATIC_TYPES.FLOAT
+			);
+		},
+		STATIC_TYPES.FLOAT,
+		STATIC_TYPES.FLOAT
+	)
+	.register();

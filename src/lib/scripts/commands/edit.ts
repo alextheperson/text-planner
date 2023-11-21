@@ -1,20 +1,22 @@
+import { CommandDefinition } from '../commands';
+import { STATIC_TYPES, Value } from '../dataType';
 import { Rectangle } from '../shapes/rectangle';
+import type { Shape } from '../shapes/shape';
 import { TextBox } from '../shapes/textbox';
 import { workspace as ws } from '../workspace';
-import { ElementParameter, Pattern, StaticParameter, StringParameter } from './command-definition';
 
-export default [
-	new Pattern([new StaticParameter(['del']), new ElementParameter()], (params) => {
-		params[0].getElement().shouldRemove = true;
+new CommandDefinition('del')
+	.addOverride((params) => {
+		(params[0].value as Shape).shouldRemove = true;
 		ws.cullElements();
 		// `Deleted the ${elementName} at position (${elementPosition.x}, ${elementPosition.y})`
 
 		// `No element selected`
-	}),
-	new Pattern(
-		[new StaticParameter(['del']), new StaticParameter(['file']), new StringParameter()],
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.SHAPE)
+	.addOverride(
 		(params) => {
-			const normalizedPath = params[1].getString().replace(/^\//, '').replace(/\/$/, '');
+			const normalizedPath = (params[1].value as string).replace(/^\//, '').replace(/\/$/, '');
 			localStorage.removeItem(normalizedPath);
 			localStorage.removeItem('/' + normalizedPath);
 			localStorage.removeItem(normalizedPath + '/');
@@ -24,14 +26,24 @@ export default [
 			// localStorage.setItem('$files', JSON.stringify(files));
 
 			// `Deleted the file '${normalizedPath}'`
-		}
-	),
-	new Pattern([new StaticParameter(['invisibles'])], () => {
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+		['file'],
+		STATIC_TYPES.STRING
+	)
+	.register();
+
+new CommandDefinition('invisibles')
+	.addOverride(() => {
 		ws.showInvisibleChars = !ws.showInvisibleChars;
 		// `Now ${ws.showInvisibleChars ? 'showing' : 'hiding'} in visible characters`
-	}),
-	new Pattern([new StaticParameter(['border']), new ElementParameter()], (params) => {
-		const selected = params[0].getElement();
+		return new Value(null, STATIC_TYPES.NULL);
+	})
+	.register();
+
+new CommandDefinition('border')
+	.addOverride((params) => {
+		const selected = params[0].value as Shape;
 		if (selected instanceof TextBox) {
 			ws.elements.push(
 				new Rectangle(
@@ -44,5 +56,6 @@ export default [
 			// `Put ${ws.selected.position.x + ws.selected.size.x}x${ws.selected.position.y + ws.selected.size.y} Rectangle around the selected TextBox`,
 		}
 		//CommandOutput(`No TextBox was selected`, OutputType.ERROR);
-	})
-];
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.SHAPE)
+	.register();

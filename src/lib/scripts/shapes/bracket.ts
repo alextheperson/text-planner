@@ -132,7 +132,10 @@ export default class Bracket implements Shape {
 		} else if (keymap.moveCursorRight.includes(event.key)) {
 			this.prevStyle();
 			return true;
-		} else if (keymap.moveCursorDown.includes(event.key)) {
+		} else if (
+			keymap.moveCursorDown.includes(event.key) ||
+			keymap.moveCursorUp.includes(event.key)
+		) {
 			if (this.side === Side.LEFT) {
 				this.side = Side.RIGHT;
 			} else {

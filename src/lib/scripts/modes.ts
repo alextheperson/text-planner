@@ -192,7 +192,7 @@ class CommandMode implements Mode {
 			ModeManager.setMode(Modes.VIEW_MODE);
 			this.currentCommand = '';
 		} else if (keymap.confirm.includes(event.key)) {
-			ws.runCommand(this.currentCommand);
+			ws.runCommand(':' + this.currentCommand);
 			this.currentCommand = '';
 			ModeManager.setMode(Modes.VIEW_MODE);
 		} else if (event.key == 'Backspace' || event.key == 'Delete') {

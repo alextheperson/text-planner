@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type Buffer from '../buffer';
-import type { Value } from '../commands/command-definition';
 import type Vector2 from '../vector';
 
 const FRAME_CHARS = [

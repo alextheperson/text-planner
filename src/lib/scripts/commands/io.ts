@@ -1,45 +1,67 @@
-import {
-	CommandOutput,
-	OutputType,
-	Pattern,
-	StaticParameter,
-	StringParameter
-} from './command-definition';
 import { workspace as ws } from '../workspace';
 import { Modes } from '../modes';
 import Vector2 from '../vector';
 import { Button } from '../shapes/button';
 import { Bookmark } from '../shapes/bookmark';
 import { wp } from '$lib/components/stores';
+import { CommandDefinition, CommandOutput, OUTPUT_TYPE } from '../commands';
+import { STATIC_TYPES, Value } from '../dataType';
 
-export default [
-	new Pattern([new StaticParameter(['log']), new StringParameter()], (params) => {
-		ws.currentOutput = new CommandOutput(params[0].getString(), OutputType.NORMAL);
-	}),
-	new Pattern([new StaticParameter(['save']), new StringParameter()], (params) => {
-		if (params[0].getString().match(/^\$[a-zA-Z]/)) {
+console.log('registered');
+
+new CommandDefinition('log')
+	.addOverride((params) => {
+		ws.currentOutput = new CommandOutput(params[0].value as string, OUTPUT_TYPE.NORMAL);
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.STRING)
+	.addOverride((params) => {
+		ws.currentOutput = new CommandOutput(
+			(params[0].value as number).toString(),
+			OUTPUT_TYPE.NORMAL
+		);
+		return new Value((params[0].value as number).toString(), STATIC_TYPES.STRING);
+	}, STATIC_TYPES.FLOAT)
+	.register();
+
+new CommandDefinition('save')
+	.addOverride((params) => {
+		if ((params[0].value as string).match(/^\$[a-zA-Z]/)) {
 			// `The path '${params[0].parsed as string}' is invalid. Paths must not start with '$'`
 		}
-		ws.saveElements(params[0].getString());
-	}),
-	new Pattern([new StaticParameter(['save'])], () => {
+		ws.saveElements(params[0].value as string);
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.STRING)
+	.addOverride(() => {
 		if (ws.fileName !== '') {
 			ws.saveElements(ws.fileName);
 		} else {
 			// `This workspace has not been saved yet. Save it with the command 'command <path>' to give a default save path`
 		}
-	}),
-	new Pattern([new StaticParameter(['load']), new StringParameter()], (params) => {
-		ws.loadElements(params[0].getString());
-	}),
-	new Pattern([new StaticParameter(['clear']), new StaticParameter(['confirm'])], () => {
+		return new Value(null, STATIC_TYPES.NULL);
+	})
+	.register();
+
+new CommandDefinition('load')
+	.addOverride((params) => {
+		ws.loadElements(params[0].value as string);
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.STRING)
+	.register();
+
+new CommandDefinition('clear')
+	.addOverride(() => {
 		ws.elements = [];
 		// `Deleted all elements from the workspace`
-	}),
-	new Pattern([new StaticParameter(['clear'])], () => {
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['confirm'])
+	.addOverride(() => {
 		// `To clear the workspace, enter the command 'clear confirm'`,
-	}),
-	new Pattern([new StaticParameter(['ls'])], () => {
+		return new Value(null, STATIC_TYPES.NULL);
+	})
+	.register();
+
+new CommandDefinition('ls')
+	.addOverride(() => {
 		const files = Object.keys(localStorage).filter((val) => !val.startsWith('$')); // JSON.parse(localStorage.getItem('$files') ?? '[]');
 		ws.saveElements('$tmp');
 		ws.elements = [];
@@ -63,7 +85,7 @@ export default [
 			for (let k = 0; k < keys.length; k++) {
 				if (typeof tree[keys[k]] == 'string') {
 					ws.elements.push(
-						new Button(new Vector2(indentation, height), `load ${tree[keys[k]]}`, keys[k])
+						new Button(new Vector2(indentation, height), `:load ${tree[keys[k]]}`, keys[k])
 					);
 					height += 1;
 				} else {
@@ -80,8 +102,14 @@ export default [
 
 		// ws.elements.push(new Button(new Vector2(0, i), `load ${files[i]}`, files[i]));
 		// `Opened file browser. To exit, press the back button, enter ':back' or enter ':load "$tmp"'`
-	}),
-	new Pattern([new StaticParameter(['back'])], () => {
-		ws.loadElements('$tmp');
+
+		return new Value(null, STATIC_TYPES.NULL);
 	})
-];
+	.register();
+
+new CommandDefinition('back')
+	.addOverride(() => {
+		ws.loadElements('$tmp');
+		return new Value(null, STATIC_TYPES.NULL);
+	})
+	.register();

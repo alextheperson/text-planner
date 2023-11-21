@@ -9,17 +9,42 @@ view mode -> select mode -> edit mode
                          <-
                          -> move mode
 
+/                 /
+/     formats     /
+/                 /
 
-              ──         │
-                         ⬆
-                         ⭡
-                         ↑ aa
-                         ∧ aaa
-                         ⋀ aa
-           ││││││─       │ aa
-                         │
-   Evaluate the code     │
-                         │
-            b            │
-                         │
-     ──────────────      │
+a: any letter
+?: any symbol
+#: number
+
+three in a row means that there can be any number of it
+
+string:
+  aaa
+  'aaa'
+
+int:
+  ###
+
+float:
+  ###.###
+
+vector2:
+  ###,###
+
+array:
+  [???,???,???]
+
+shape:
+  @###,### (by coordinate)
+  @c (under cursor)
+  @### (by index)
+  @i### (by id)
+
+get property
+  @###,###[aaa]
+
+command:
+  :??? ??? ??? (Execute command in root level)
+  (??? ??? ???) (Pass command to execute)
+  (:??? ??? ???) (Execute command and pass the result)

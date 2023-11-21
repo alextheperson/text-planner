@@ -1,13 +1,21 @@
 import { display } from '$lib/components/stores';
 import Buffer from './buffer';
-import { parseCommand } from './commands';
-import { CommandOutput, OutputType } from './commands/command-definition';
+import { parseExpression, CommandOutput, OUTPUT_TYPE } from './commands';
 import ModeManager, { CommandMode, Modes } from './modes';
 import { ShapeList as SHAPES } from './shapes/index';
 import { FRAME_CHARS, type Shape } from './shapes/shape';
 import { TextBox } from './shapes/textbox';
 import Vector2 from './vector';
 import { wp } from '$lib/components/stores';
+import { Value } from './dataType';
+
+import './commands/create';
+import './commands/edit';
+import './commands/io';
+import './commands/math';
+import './commands/movement';
+import './commands/settings';
+
 class Workspace {
 	selected: Shape | null = null;
 
@@ -22,7 +30,7 @@ class Workspace {
 
 	currentCommand = '';
 	lastCommand = '';
-	currentOutput = new CommandOutput('', OutputType.NORMAL);
+	currentOutput = new CommandOutput('', OUTPUT_TYPE.NORMAL);
 
 	showInvisibleChars = false;
 
@@ -136,12 +144,12 @@ class Workspace {
 		this.displayBuffer.composite(
 			10,
 			this.displayBuffer.height - 1,
-			new TextBox(new Vector2(0, 0), this.currentOutput.content).render(
-				this.currentOutput.type == OutputType.NORMAL
+			new TextBox(new Vector2(0, 0), this.currentOutput.message).render(
+				this.currentOutput.type == OUTPUT_TYPE.NORMAL
 					? ''
-					: this.currentOutput.type == OutputType.ERROR
+					: this.currentOutput.type == OUTPUT_TYPE.ERROR
 					? 'error'
-					: this.currentOutput.type == OutputType.WARNING
+					: this.currentOutput.type == OUTPUT_TYPE.WARNING
 					? 'warning'
 					: ''
 			)
@@ -168,7 +176,7 @@ class Workspace {
 			}
 			this.displayBuffer.composite(
 				ModeManager.currentMode.currentCommand.lastIndexOf(' ') + 9,
-				this.displayBuffer.height - ModeManager.currentMode.options.length - 2,
+				this.displayBuffer.height - ModeManager.currentMode.options.length - 3,
 				new TextBox(new Vector2(0, 0), optionString).render('')
 			);
 		}
@@ -177,9 +185,19 @@ class Workspace {
 	}
 
 	runCommand(command: string) {
-		const output = parseCommand(command);
-		if (output instanceof CommandOutput) {
-			this.currentOutput = output;
+		try {
+			const output = parseExpression(command);
+			if (output instanceof Value) {
+				this.currentOutput = new CommandOutput(
+					`(${output.type}) ${output.value}`,
+					OUTPUT_TYPE.NORMAL
+				);
+			}
+			if (output instanceof CommandOutput) {
+				this.currentOutput = output;
+			}
+		} catch (e) {
+			this.currentOutput = new CommandOutput((e as Error).message, OUTPUT_TYPE.ERROR);
 		}
 		this.selected = this.underCursor();
 		this.drawScreen();
@@ -199,7 +217,7 @@ class Workspace {
 		let string = '';
 		let output = new CommandOutput(
 			`Saved the workspace to file ${normalizedPath}`,
-			OutputType.NORMAL
+			OUTPUT_TYPE.NORMAL
 		);
 		string = JSON.stringify({
 			cursorPosition: wp.cursor,
@@ -211,7 +229,7 @@ class Workspace {
 			if (stringified.match(/.*\[,\].*/) !== null) {
 				output = new CommandOutput(
 					`Saved the workspace to file ${normalizedPath}, but it contained '[,]' which had to be escaped.`,
-					OutputType.WARNING
+					OUTPUT_TYPE.WARNING
 				);
 			}
 			string += '[,]' + stringified.replace('[,]', '[]');
@@ -230,7 +248,7 @@ class Workspace {
 		const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
 		const parts = localStorage.getItem(normalizedPath)?.split('[,]') ?? [];
 		if (parts.length < 1) {
-			return new CommandOutput(`The files ${normalizedPath} does not exist`, OutputType.ERROR);
+			return new CommandOutput(`The files ${normalizedPath} does not exist`, OUTPUT_TYPE.ERROR);
 		}
 		const list = parts.slice(1);
 		const state = JSON.parse(parts[0]);
@@ -253,7 +271,7 @@ class Workspace {
 		wp.setCanvasCoords(new Vector2(state['viewPosition']['x'], state['viewPosition']['y']));
 		this.allowedModes = state['allowedModes'];
 		ModeManager.setMode(Modes.VIEW_MODE);
-		return new CommandOutput(`Loaded the workspace ${path}`, OutputType.NORMAL);
+		return new CommandOutput(`Loaded the workspace ${path}`, OUTPUT_TYPE.NORMAL);
 	}
 
 	getId(): number {

@@ -1,9 +1,9 @@
-import type { Parameter } from './commands/command-definition';
+import type { Value } from './dataType';
 
 class ParameterMismatchError extends Error {
-	constructor(parameter: Parameter, value: string) {
+	constructor(parameter: Value, value: string) {
 		super(
-			`A parameter of type '${parameter.typeName}' was given the value '${value}', which is not in the right format. If this error happens, it means there is an error with the command's pattern-matching algorithm.`
+			`A parameter of type '${parameter.type}' was given the value '${value}', which is not in the right format. If this error happens, it means there is an error with the command's pattern-matching algorithm.`
 		);
 
 		// Set the prototype explicitly.
