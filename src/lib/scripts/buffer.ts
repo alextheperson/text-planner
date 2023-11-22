@@ -35,8 +35,19 @@ class Buffer {
 		}
 	}
 
+	escapeChar(char: string): string {
+		// This cannot use .replace because it will replace legitimate tags that we don't want to escape
+		if (char === '<') {
+			return '&lt;';
+		}
+		if (char === '>') {
+			return '&gt;';
+		}
+		return char;
+	}
+
 	render() {
-		return this.buffer.map((e) => e.join('')).join('\n');
+		return this.buffer.map((e) => e.map((val) => this.escapeChar(val)).join('')).join('\n');
 	}
 }
 
