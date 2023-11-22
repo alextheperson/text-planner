@@ -1,7 +1,6 @@
 import { wp } from '$lib/components/stores';
 import { getNextParameters } from './commands';
 import { keymap } from './keymap';
-import Vector2 from './vector';
 import { workspace as ws } from './workspace';
 
 const FAST_MOVE_SPEED = 5;
@@ -22,25 +21,25 @@ enum ShapeTypes {
 
 function move(event: KeyboardEvent) {
 	if (keymap.moveViewUp.includes(event.key)) {
-		wp.moveCanvas(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
-		// wp.moveCursor(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
+		wp.moveCanvas(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
+		// wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
 	} else if (keymap.moveViewDown.includes(event.key)) {
-		wp.moveCanvas(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
-		// wp.moveCursor(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
+		wp.moveCanvas(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
+		// wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
 	} else if (keymap.moveViewLeft.includes(event.key)) {
-		wp.moveCanvas(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
-		// wp.moveCursor(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
+		wp.moveCanvas(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
+		// wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
 	} else if (keymap.moveViewRight.includes(event.key)) {
-		wp.moveCanvas(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
-		// wp.moveCursor(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
+		wp.moveCanvas(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
+		// wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
 	} else if (keymap.moveCursorUp.includes(event.key)) {
-		wp.moveCursor(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
+		wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
 	} else if (keymap.moveCursorDown.includes(event.key)) {
-		wp.moveCursor(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
+		wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
 	} else if (keymap.moveCursorLeft.includes(event.key)) {
-		wp.moveCursor(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
+		wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
 	} else if (keymap.moveCursorRight.includes(event.key)) {
-		wp.moveCursor(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
+		wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
 	}
 }
 
@@ -63,7 +62,7 @@ class ViewMode implements Mode {
 		} else if (event.key == ':') {
 			ModeManager.setMode(Modes.COMMAND);
 		} else if (ws.selected !== null) {
-			ws.selected.interact(new Vector2(wp.cursor.x, wp.cursor.y), event);
+			ws.selected.interact(wp.cursorX, wp.cursorY, event);
 		}
 		ws.selected = ws.underCursor();
 		ws.drawScreen();
@@ -71,10 +70,8 @@ class ViewMode implements Mode {
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		ws.selected = ws.underCursor();
 		ws.drawScreen();
@@ -85,7 +82,8 @@ class MoveMode implements Mode {
 	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${keymap.moveViewLeft[0]}], [${keymap.moveViewRight[0]}]: Move View. [${keymap.moveCursorUp[0]}], [${keymap.moveCursorDown[0]}], [${keymap.moveCursorLeft[0]}], [${keymap.moveCursorRight[0]}]: Move Object. [${keymap.viewMode[0]}]: View Mode.`;
 
 	input(event: KeyboardEvent) {
-		let movement = new Vector2(0, 0);
+		let deltaX = 0;
+		let deltaY = 0;
 		if (
 			keymap.confirm.includes(event.key) ||
 			keymap.cancel.includes(event.key) ||
@@ -93,23 +91,23 @@ class MoveMode implements Mode {
 		) {
 			ModeManager.setMode(Modes.VIEW_MODE);
 		} else if (keymap.moveViewUp.includes(event.key)) {
-			wp.moveCursor(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
+			wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
 		} else if (keymap.moveViewDown.includes(event.key)) {
-			wp.moveCursor(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
+			wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveViewLeft.includes(event.key)) {
-			wp.moveCursor(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
+			wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
 		} else if (keymap.moveViewRight.includes(event.key)) {
-			wp.moveCursor(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
+			wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
 		} else if (keymap.moveCursorUp.includes(event.key)) {
-			movement = new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
+			deltaY = -(event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveCursorDown.includes(event.key)) {
-			movement = new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
+			deltaY = event.shiftKey ? FAST_MOVE_SPEED : 1;
 		} else if (keymap.moveCursorLeft.includes(event.key)) {
-			movement = new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
+			deltaX = -(event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveCursorRight.includes(event.key)) {
-			movement = new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
+			deltaX = event.shiftKey ? FAST_MOVE_SPEED : 1;
 		}
-		ws.selected?.move(new Vector2(wp.cursor.x, wp.cursor.y), movement);
+		ws.selected?.move(wp.cursorX, wp.cursorY, deltaX, deltaY);
 		// move(event);
 		ws.selected = ws.underCursor();
 		ws.drawScreen();
@@ -117,10 +115,8 @@ class MoveMode implements Mode {
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		ws.selected = ws.underCursor();
 		ws.drawScreen();
@@ -144,10 +140,7 @@ class EditMode implements Mode {
 		if (keymap.viewMode.includes(event.key)) {
 			ModeManager.setMode(Modes.VIEW_MODE);
 			// ws.selectedType = ShapeTypes.NONE;
-		} else if (
-			ws.selected !== null &&
-			!ws.selected.input(new Vector2(wp.cursor.x, wp.cursor.y), event)
-		) {
+		} else if (ws.selected !== null && !ws.selected.input(wp.cursorX, wp.cursorY, event)) {
 			move(event);
 		}
 		ws.drawScreen();
@@ -155,10 +148,8 @@ class EditMode implements Mode {
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		const hoveredElement = ws.underCursor();
 		if (ws.selected === null || hoveredElement instanceof ws.selected.constructor) {
@@ -225,10 +216,8 @@ class CommandMode implements Mode {
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		ws.drawScreen();
 		ws.selected = ws.underCursor();

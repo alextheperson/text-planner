@@ -1,48 +1,80 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
-import Vector2 from '../vector';
-import type { Shape } from './shape';
+import type { Command } from '../commands';
+import { BindableInt, STATIC_TYPES, Value, type BindableValue } from '../dataType';
+import type { Bindings, SerializedShape, Shape } from './shape';
 
 export class TwoPointShape implements Shape {
-	position!: Vector2;
-	startPosition: Vector2;
-	endPosition: Vector2;
-	size!: Vector2;
+	// TODO: Make these getters
+	positionX: BindableInt = new BindableInt(0);
+	positionY: BindableInt = new BindableInt(0);
+	width: BindableInt = new BindableInt(0);
+	height: BindableInt = new BindableInt(0);
 	shouldRemove = false;
-	readonly id: number;
+	readonly id: string;
 
-	constructor(startX: number, startY: number, endX: number, endY: number) {
-		this.startPosition = new Vector2(startX, startY);
-		this.endPosition = new Vector2(endX, endY);
+	readonly bindings: Bindings = {
+		'start/x': {
+			propertyName: 'startX',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'start/y': {
+			propertyName: 'startY',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'end/x': {
+			propertyName: 'endX',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'end/y': {
+			propertyName: 'endY',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		}
+	};
 
-		this.id = 1;
+	startX: BindableInt;
+	startY: BindableInt;
+	endX: BindableInt;
+	endY: BindableInt;
+
+	constructor(startX: number, startY: number, endX: number, endY: number, id: string) {
+		this.startX = new BindableInt(startX);
+		this.startY = new BindableInt(startY);
+		this.endX = new BindableInt(endX);
+		this.endY = new BindableInt(endY);
+
+		this.id = id;
 
 		this.updateDimensions();
 	}
 
 	updateDimensions() {
-		this.position = new Vector2(
-			Math.min(this.startPosition.x, this.endPosition.x),
-			Math.min(this.startPosition.y, this.endPosition.y)
-		);
-		this.size = new Vector2(
-			Math.abs(this.endPosition.x - this.startPosition.x) + 1,
-			Math.abs(this.endPosition.y - this.startPosition.y) + 1
-		);
+		this.positionX.value = Math.min(this.startX.value, this.endX.value);
+		this.positionY.value = Math.min(this.startY.value, this.endY.value);
+
+		this.width.value = Math.abs(this.endX.value - this.startX.value) + 1;
+		this.height.value = Math.abs(this.endY.value - this.startY.value) + 1;
 	}
 
-	move(cursor: Vector2, movement: Vector2) {
-		if (Vector2.compare(cursor, this.startPosition)) {
-			this.startPosition.add(movement);
-			wp.moveCursor(movement);
-		} else if (Vector2.compare(cursor, this.endPosition)) {
-			this.endPosition.add(movement);
-			wp.moveCursor(movement);
-		} else {
-			this.startPosition.add(movement);
-			this.endPosition.add(movement);
-			wp.moveCursor(movement);
+	move(cursorX: number, cursorY: number, deltaX: number, deltaY: number) {
+		if (cursorX !== this.startX.value || cursorY !== this.startY.value) {
+			this.startX.value += deltaX;
+			this.startY.value += deltaY;
+			wp.moveCursor(deltaX, deltaY);
+		}
+		if (cursorX !== this.endX.value || cursorY !== this.endY.value) {
+			this.endX.value += deltaX;
+			this.endY.value += deltaY;
+			wp.moveCursor(deltaX, deltaY);
 		}
 
 		this.updateDimensions();
@@ -50,47 +82,66 @@ export class TwoPointShape implements Shape {
 
 	render(className: string) {
 		this.updateDimensions();
-		const buffer = new Buffer(this.size.x, this.size.y, '');
+		const buffer = new Buffer(this.width.value, this.height.value, '');
 		buffer.setChar(0, 0, '*', className);
-		buffer.setChar(this.size.x - 1, 0, '*', className);
-		buffer.setChar(0, this.size.y - 1, '*', className);
-		buffer.setChar(this.size.x - 1, this.size.y - 1, '*', className);
+		buffer.setChar(this.width.value - 1, 0, '*', className);
+		buffer.setChar(0, this.height.value - 1, '*', className);
+		buffer.setChar(this.width.value - 1, this.height.value - 1, '*', className);
 		return buffer;
 	}
 
 	isOn(x: number, y: number) {
 		this.updateDimensions();
 
-		const localX = x - this.position.x;
-		const localY = y - this.position.y;
+		const localX = x - this.positionX.value;
+		const localY = y - this.positionY.value;
 
-		return localX >= 0 && localX < this.size.x && localY >= 0 && localY < this.size.y;
+		return localX >= 0 && localX < this.width.value && localY >= 0 && localY < this.height.value;
 	}
 
-	input(cursor: Vector2, event: KeyboardEvent) {
+	input(cursorX: number, cursorY: number, event: KeyboardEvent) {
 		return false;
 	}
 
-	interact(cursor: Vector2, event: KeyboardEvent): boolean {
+	interact(cursorX: number, cursorY: number, event: KeyboardEvent): boolean {
 		return false;
 	}
 
-	static serialize(input: TwoPointShape): string {
-		return JSON.stringify({
+	getBinding(name: string): Value {
+		const propertyName = this.bindings[name]['propertyName'] as keyof TwoPointShape;
+		if (propertyName === undefined) {
+			throw new Error(`This item does not have a binding called '${name}'`);
+		}
+		return new Value((this[propertyName] as BindableInt).value, this.bindings[name]['type']);
+	}
+
+	setBinding(name: string, command: Command): void {
+		const propertyName = this.bindings[name]['propertyName'] as keyof TwoPointShape;
+		if (propertyName === undefined) {
+			throw new Error(`This item does not have a binding called '${name}'`);
+		}
+		(this[propertyName] as BindableInt).bind(command);
+	}
+
+	static serialize(input: TwoPointShape): SerializedShape {
+		return {
 			_type: 'TwoPointShape',
-			startPosition: input.startPosition,
-			endPosition: input.endPosition
-		});
+			id: input.id,
+			startX: input.startX.value,
+			startY: input.startY.value,
+			endX: input.endX.value,
+			endY: input.endY.value
+		};
 	}
 
-	static deserialize(input: string): TwoPointShape | null {
-		const json = JSON.parse(input);
-		if (json['_type'] === 'TwoPointShape') {
+	static deserialize(input: SerializedShape): TwoPointShape | null {
+		if (input['_type'] === 'TwoPointShape') {
 			return new TwoPointShape(
-				json['startPosition']['x'],
-				json['startPosition']['y'],
-				json['endPosition']['x'],
-				json['endPosition']['y']
+				input['startX'] as number,
+				input['startY'] as number,
+				input['endX'] as number,
+				input['endY'] as number,
+				input['id'] as string
 			);
 		}
 		return null;

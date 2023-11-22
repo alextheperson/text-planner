@@ -1,27 +1,21 @@
-import { STATIC_TYPES, Value, type DataType, Int } from './dataType';
-import Vector2 from './vector';
+import { STATIC_TYPES, Value, type DataType } from './dataType';
 
 export class Command {
 	name: string;
 	parameters: Value[];
+	pattern: CommandOverride;
 	constructor(name: string, parameters: Value[]) {
 		this.name = name;
 		this.parameters = parameters;
+		this.pattern = CommandRegistry.findCommand(this.name, ...this.parameters);
 	}
 
 	execute() {
-		return CommandRegistry.findCommand(this.name, ...this.parameters)?.implementation(
-			this.parameters
-		);
+		return this.pattern.implementation(this.parameters);
 	}
 }
 export function parseExpression(expression: string): Value {
-	let exp = expression;
-	if (exp.startsWith('(') && exp.endsWith(')')) {
-		exp = exp.slice(1, -1);
-	}
-
-	if (exp.match(/^:([a-z]+)( \S+)*$/)) {
+	function parseCommand(exp: string) {
 		const tokens = [];
 		let currentToken = '';
 		let inQuotes = false;
@@ -53,45 +47,43 @@ export function parseExpression(expression: string): Value {
 			tokens.slice(1).map((val) => parseExpression(val))
 		);
 
-		return command.execute();
+		return command;
 	}
 
-	if (exp.match(/^".*"/)) {
+	let exp = expression;
+	if (exp.startsWith('(') && exp.endsWith(')')) {
+		exp = exp.slice(1, -1);
+		if (exp.match(/^:([a-z]+)( \S+)*$/)) {
+			return parseCommand(exp).execute();
+		} else {
+			return new Value(parseCommand(exp), STATIC_TYPES.COMMAND);
+		}
+	} else if (exp.match(/^:([a-z]+)( \S+)*$/)) {
+		// Match a command call
+		return parseCommand(exp).execute();
+	} else if (exp.match(/^".*"/)) {
+		// Match a string in quotes
 		return new Value(exp.slice(1, -1), STATIC_TYPES.STRING);
-	}
-	if (exp.match(/^[a-zA-V]+$/)) {
+	} else if (exp.match(/^[a-zA-Z]+$/)) {
+		// Match an implicit string
 		return new Value(exp, STATIC_TYPES.STRING);
-	}
-	if (exp.match(/^\[[0-9]+(,[0-9]+)*\]$/)) {
-		return new Value(
-			exp
-				.slice(1, -1)
-				.split(',')
-				.map((val) => parseExpression(val)),
-			STATIC_TYPES.ARRAY
-		);
-	}
-	if (exp.match(/^[0-9]+$/)) {
+	} else if (exp.match(/^[0-9]+$/)) {
+		// Match an integer
 		return new Value(parseInt(exp), STATIC_TYPES.INT);
-	}
-	if (exp.match(/^[0-9]+\.[0-9]*$/)) {
+	} else if (exp.match(/^[0-9]+\.[0-9]*$/)) {
+		// Match a float
 		return new Value(parseFloat(exp), STATIC_TYPES.FLOAT);
-	}
-	if (exp.match(/^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$/)) {
-		return new Value(
-			new Vector2(parseFloat(exp.split(',')[0]), parseFloat(exp.split(',')[1])),
-			STATIC_TYPES.VECTOR
-		);
 	}
 	throw SyntaxError(`'${expression}' is not valid`);
 }
 
+export type CommandOverride = {
+	implementation: (params: Value[]) => Value;
+	pattern: DataType[];
+};
 export class CommandDefinition {
 	name: string;
-	overrides: {
-		implementation: (params: Value[]) => Value;
-		pattern: DataType[];
-	}[];
+	overrides: CommandOverride[];
 
 	constructor(name: string) {
 		this.name = name;

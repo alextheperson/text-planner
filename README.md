@@ -1,38 +1,15 @@
-# create-svelte
+# Text Planner
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/master/packages/create-svelte).
+Text Planner is an infinite canvas to layout your ideas on. You can navigate everything using just your keyboard. It is highly extensible with a command system that doesn't limit you to what the software was designed to do.
 
-## Creating a project
+## Commands
 
-If you're seeing this, you've probably already done this step. Congrats!
+Commands allow you to do just about anything in Text Planner. They let you do simple stuff like create a new rectangle (`:new rect`), and in the next update will let you do more complicated things like bind shape properties to commands (`:bind @c "position/x" (get @3 "bounds/top-left")`). Their syntax is designed to be simple to learn, but not hold you back.
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+## Roadmap
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+- Finish parser upgrades
+- Add command binding
+- Add easy binding with snapping
+- Add help & preference documents
+- Add scripting support

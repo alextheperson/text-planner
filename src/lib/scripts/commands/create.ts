@@ -1,4 +1,3 @@
-import Vector2 from '../vector';
 import { workspace as ws } from '../workspace';
 import { TextBox } from '../shapes/textbox';
 import { Line } from '../shapes/line';
@@ -7,33 +6,30 @@ import { Rectangle } from '../shapes/rectangle';
 import { Bookmark } from '../shapes/bookmark';
 import { Button } from '../shapes/button';
 import { wp } from '$lib/components/stores';
-import Bracket, { BracketType } from '../shapes/bracket';
-import { Side } from '../shapes/shape';
-import { CommandDefinition } from '../commands';
-import { Int, STATIC_TYPES, Value } from '../dataType';
+import Bracket from '../shapes/bracket';
+import { Command, CommandDefinition } from '../commands';
+import { STATIC_TYPES, Value } from '../dataType';
 
 new CommandDefinition('new')
 	.addOverride(() => {
-		ws.elements.push(new TextBox(new Vector2(wp.cursor.x, wp.cursor.y), 'New Text'));
+		ws.elements.push(new TextBox(wp.cursorX, wp.cursorY, 'New Text', ws.getId()));
 		console.log('abc');
-		// `New TextBox created at (${ws.cursor.x}, ${ws.cursor.y})`
+		// `New TextBox created at (${ws.cursorX}, ${ws.cursorY})`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['text'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(
-				new TextBox(new Vector2(wp.cursor.x, wp.cursor.y), params[1].value as string)
-			);
+			ws.elements.push(new TextBox(wp.cursorX, wp.cursorY, params[1].value as string, ws.getId()));
 			console.log('abc');
-			// `New TextBox created at (${ws.cursor.x}, ${ws.cursor.y}) with the content '${params[1].parsed.toString()}'`
+			// `New TextBox created at (${ws.cursorX}, ${ws.cursorY}) with the content '${params[1].parsed.toString()}'`
 			return new Value(null, STATIC_TYPES.NULL);
 		},
 		['text'],
 		STATIC_TYPES.STRING
 	)
 	.addOverride(() => {
-		ws.elements.push(new Line(wp.cursor.x, wp.cursor.y, wp.cursor.x + 5, wp.cursor.y + 5));
-		// `New Line created from (${ws.cursor.x}, ${ws.cursor.y}) to (${ws.cursor.x + 5}, ${ws.cursor.y + 5})`
+		ws.elements.push(new Line(wp.cursorX, wp.cursorY, wp.cursorX + 5, wp.cursorY + 5, ws.getId()));
+		// `New Line created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`
 
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['line'])
@@ -41,10 +37,11 @@ new CommandDefinition('new')
 		(params) => {
 			ws.elements.push(
 				new Line(
-					(params[1].value as Vector2).x,
-					(params[1].value as Vector2).y,
-					(params[2].value as Vector2).x,
-					(params[2].value as Vector2).y
+					params[1].value as number,
+					params[2].value as number,
+					params[3].value as number,
+					params[4].value as number,
+					ws.getId()
 				)
 			);
 			// `New Line created from (${params[1].parsed as number}, ${params[2].parsed as number}) to (${params[3].parsed as number}, ${params[4].parsed as number})`
@@ -52,12 +49,16 @@ new CommandDefinition('new')
 			return new Value(null, STATIC_TYPES.NULL);
 		},
 		['line'],
-		STATIC_TYPES.VECTOR,
-		STATIC_TYPES.VECTOR
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
 	)
 	.addOverride(() => {
-		ws.elements.push(new Connector(wp.cursor.x, wp.cursor.y, wp.cursor.x + 5, wp.cursor.y + 5));
-		// `New Connector created from (${ws.cursor.x}, ${ws.cursor.y}) to (${ws.cursor.x + 5}, ${ws.cursor.y + 5})`,
+		ws.elements.push(
+			new Connector(wp.cursorX, wp.cursorY, wp.cursorX + 5, wp.cursorY + 5, ws.getId())
+		);
+		// `New Connector created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`,
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['connector'])
 	.addOverride(
@@ -68,7 +69,8 @@ new CommandDefinition('new')
 					params[1].value as number,
 					params[2].value as number,
 					params[3].value as number,
-					params[4].value as number
+					params[4].value as number,
+					ws.getId()
 				)
 			);
 			// `New Connector created from (${params[1].parsed as number}, ${params[2].parsed as number}) to (${params[3].parsed as number}, ${params[4].parsed as number})`
@@ -81,8 +83,10 @@ new CommandDefinition('new')
 		STATIC_TYPES.INT
 	)
 	.addOverride(() => {
-		ws.elements.push(new Rectangle(wp.cursor.x, wp.cursor.y, wp.cursor.x + 5, wp.cursor.y + 5));
-		// `New Rectangle created from (${ws.cursor.x}, ${ws.cursor.y}) to (${ws.cursor.x + 5}, ${ws.cursor.y + 5})`
+		ws.elements.push(
+			new Rectangle(wp.cursorX, wp.cursorY, wp.cursorX + 5, wp.cursorY + 5, ws.getId())
+		);
+		// `New Rectangle created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['rect'])
 	.addOverride(
@@ -92,7 +96,8 @@ new CommandDefinition('new')
 					params[1].value as number,
 					params[2].value as number,
 					params[3].value as number,
-					params[4].value as number
+					params[4].value as number,
+					ws.getId()
 				)
 			);
 			// `New Rectangle created from (${params[1].parsed as number}, ${params[2].parsed as number}) to (${params[3].parsed as number}, ${params[4].parsed as number})`
@@ -105,16 +110,14 @@ new CommandDefinition('new')
 		STATIC_TYPES.INT
 	)
 	.addOverride(() => {
-		ws.elements.push(new Bookmark(new Vector2(wp.cursor.x, wp.cursor.y), 'New Bookmark'));
-		// `New Bookmark created at (${ws.cursor.x}, ${ws.cursor.y})`
+		ws.elements.push(new Bookmark(wp.cursorX, wp.cursorY, 'New Bookmark', ws.getId()));
+		// `New Bookmark created at (${ws.cursorX}, ${ws.cursorY})`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['bookmark'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(
-				new Bookmark(new Vector2(wp.cursor.x, wp.cursor.y), params[1].value as string)
-			);
-			// `New Bookmark created at (${ws.cursor.x}, ${ws.cursor.y}) with the name ${params[1].parsed as string}`
+			ws.elements.push(new Bookmark(wp.cursorX, wp.cursorY, params[1].value as string, ws.getId()));
+			// `New Bookmark created at (${ws.cursorX}, ${ws.cursorY}) with the name ${params[1].parsed as string}`
 			return new Value(null, STATIC_TYPES.NULL);
 		},
 
@@ -124,43 +127,43 @@ new CommandDefinition('new')
 	.addOverride(
 		(params) => {
 			ws.elements.push(
-				new Button(new Vector2(wp.cursor.x, wp.cursor.y), params[1].value as string, 'New Button')
+				new Button(wp.cursorX, wp.cursorY, params[1].value as Command, 'New Button', ws.getId())
 			);
-			// `New Button created at (${ws.cursor.x}, ${ws.cursor.y}) with the action ${params[1].parsed as string}`
+			// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string}`
 			return new Value(null, STATIC_TYPES.NULL);
 		},
 		['button'],
-		STATIC_TYPES.STRING
+		STATIC_TYPES.COMMAND
 	)
 	.addOverride(
 		(params) => {
 			ws.elements.push(
 				new Button(
-					new Vector2(wp.cursor.x, wp.cursor.y),
-					params[1].value as string,
-					params[2].value as string
+					wp.cursorX,
+					wp.cursorY,
+					params[1].value as Command,
+					params[2].value as string,
+					ws.getId()
 				)
 			);
-			// `New Button created at (${ws.cursor.x}, ${ws.cursor.y}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
+			// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
 			return new Value(null, STATIC_TYPES.NULL);
 		},
 
 		['button'],
-		STATIC_TYPES.STRING,
+		STATIC_TYPES.COMMAND,
 		STATIC_TYPES.STRING
 	)
 	.addOverride(() => {
-		ws.elements.push(
-			new Bracket(new Vector2(wp.cursor.x, wp.cursor.y), 3, BracketType.CURLY, Side.LEFT)
-		);
-		// `New Button created at (${ws.cursor.x}, ${ws.cursor.y}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
+		ws.elements.push(new Bracket(wp.cursorX, wp.cursorY, 3, ws.getId()));
+		// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['bracket'])
 	.addOverride(() => {
 		ws.elements = [];
 		ws.fileName = '';
-		wp.setCursorCoords(new Vector2(0, 0));
-		wp.setCanvasCoords(new Vector2(0, 0));
+		wp.setCursorCoords(0, 0);
+		wp.setCanvasCoords(0, 0);
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['file'])
 	.register();

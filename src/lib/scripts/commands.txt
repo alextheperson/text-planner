@@ -1,18 +1,3 @@
-:g x=num y=num => set the cursor position (the window clamps)
-:border val=on|off => set whether text has a border
-:edit side=start|end => edit a line from that side
-:start
-:end
-:cancel
-                         <-
-view mode -> select mode -> edit mode
-                         <-
-                         -> move mode
-
-/                 /
-/     formats     /
-/                 /
-
 a: any letter
 ?: any symbol
 #: number
@@ -29,22 +14,32 @@ int:
 float:
   ###.###
 
-vector2:
-  ###,###
+TODO:
+boolean: (does conflict with implicit strings)
+  true
+  false
 
-array:
-  [???,???,???]
-
-shape:
+shape: TODO:
   @###,### (by coordinate)
   @c (under cursor)
   @### (by index)
   @i### (by id)
 
-get property
-  @###,###[aaa]
-
 command:
   :??? ??? ??? (Execute command in root level)
-  (??? ??? ???) (Pass command to execute)
+  (??? ??? ???) (Pass command to execute) TODO:
   (:??? ??? ???) (Execute command and pass the result)
+
+shape bindings: TODO:
+  position
+    x: int
+    y: int
+  bounds
+    height: int
+    width: int
+  
+  create bindings: TODO:
+          shape   binding name command
+    :bind <SHAPE> <STRING>     <COMMAND>
+         shape   binding name
+    :get <SHAPE> <STRING>

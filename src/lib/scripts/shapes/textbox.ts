@@ -1,51 +1,91 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
+import type { Command } from '../commands';
+import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
 import { keymap } from '../keymap';
-import Vector2 from '../vector';
 import { workspace as ws } from '../workspace';
-import type { Shape } from './shape';
+import type { Bindings, SerializedShape, Shape } from './shape';
 
 export class TextBox implements Shape {
-	position: Vector2;
-	size!: Vector2;
-	content: string;
-	hasBorder = false;
+	positionX: BindableInt;
+	positionY: BindableInt;
+	width: BindableInt = new BindableInt(0);
+	height: BindableInt = new BindableInt(0);
 	shouldRemove = false;
-	readonly id: number;
+	readonly id: string;
 
-	constructor(position: Vector2, content: string) {
-		this.position = position;
-		this.content = content;
+	readonly bindings: Bindings = {
+		'position/x': {
+			propertyName: 'positionX',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'position/y': {
+			propertyName: 'positionY',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'size/width': {
+			propertyName: 'width',
+			gettable: true,
+			settable: false,
+			type: STATIC_TYPES.INT
+		},
+		'size/height': {
+			propertyName: 'height',
+			gettable: true,
+			settable: false,
+			type: STATIC_TYPES.INT
+		},
+		content: {
+			propertyName: 'content',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.STRING
+		}
+	};
 
-		this.id = 1;
+	content: BindableString;
+	hasBorder = false;
+
+	constructor(positionX: number, positionY: number, content: string, id: string) {
+		this.positionX = new BindableInt(positionX);
+		this.positionY = new BindableInt(positionY);
+		this.content = new BindableString(content);
+
+		this.id = id;
 
 		this.updateDimensions();
 	}
 
 	addCharAt(char: string, at: number) {
-		this.content = this.content.slice(0, at) + char + this.content.slice(at);
+		this.content.value = this.content.value.slice(0, at) + char + this.content.value.slice(at);
 		this.updateCursorPosition(1);
 	}
 
 	deleteAt(at: number) {
-		this.content = this.content.slice(0, Math.max(at - 1, 0)) + this.content.slice(at);
+		this.content.value =
+			this.content.value.slice(0, Math.max(at - 1, 0)) + this.content.value.slice(at);
 		this.updateCursorPosition(-1);
 	}
 
 	updateDimensions() {
-		const lines = this.content.split('\n');
-		this.size = new Vector2(0, lines.length);
+		const lines = this.content.value.split('\n');
+		this.width.value = 0;
+		this.height.value = lines.length;
 		lines.forEach((line) => {
-			this.size.x = Math.max(this.size.x, line.length);
+			this.width.value = Math.max(this.width.value, line.length);
 		});
 	}
 
 	isOn(x: number, y: number) {
-		const localX = x - this.position.x;
-		const localY = y - this.position.y;
+		const localX = x - this.positionX.value;
+		const localY = y - this.positionY.value;
 
-		const lines = this.content.split('\n');
+		const lines = this.content.value.split('\n');
 		for (let i = 0; i < lines.length; i++) {
 			if (localY == i && localX >= 0 && localX <= lines[i].length) {
 				return true;
@@ -55,8 +95,8 @@ export class TextBox implements Shape {
 	}
 
 	// isOnText(x: number, y: number) {
-	// 	const localX = x - this.position.x;
-	// 	const localY = y - this.position.y;
+	// 	const localX = x - this.positionX.value;
+	// 	const localY = y - this.positionY.value;
 
 	// 	const lines = this.content.split('\n');
 	// 	for (let i = 0; i < lines.length; i++) {
@@ -68,14 +108,14 @@ export class TextBox implements Shape {
 	// }
 
 	getIndex(x: number, y: number) {
-		const localX = x - this.position.x;
-		const localY = y - this.position.y;
+		const localX = x - this.positionX.value;
+		const localY = y - this.positionY.value;
 
 		// if (localX == 0 && localY == this.content.replaceAll(/[^\n]/g, '').length) {
 		// 	return this.content.length + 1;
 		// }
 
-		const lines = this.content.split('\n');
+		const lines = this.content.value.split('\n');
 		return lines.slice(0, localY).concat(['']).join('\n').length + localX;
 	}
 
@@ -83,27 +123,31 @@ export class TextBox implements Shape {
 		this.updateDimensions();
 		let row = 0;
 		let col = 0;
-		const buffer = new Buffer(this.size.x /* + (ws.showInvisibleChars ? 1 : 0)*/, this.size.y, '');
-		for (let i = 0; i < this.content.length; i++) {
-			if (this.content[i] == '\n') {
+		const buffer = new Buffer(
+			this.width.value /* + (ws.showInvisibleChars ? 1 : 0)*/,
+			this.height.value,
+			''
+		);
+		for (let i = 0; i < this.content.value.length; i++) {
+			if (this.content.value[i] == '\n') {
 				// if (ws.showInvisibleChars) {
 				// buffer.setChar(col, row, '\u23ce', className);
 				// }
 				row += 1;
 				col = 0;
 			} else {
-				buffer.setChar(col, row, this.content[i], className);
+				buffer.setChar(col, row, this.content.value[i], className);
 				col += 1;
 			}
 		}
 		return buffer;
 	}
 
-	input(cursor: Vector2, event: KeyboardEvent) {
-		const positionInText = this.getIndex(wp.cursor.x, wp.cursor.y);
+	input(cursorX: number, cursorY: number, event: KeyboardEvent) {
+		const positionInText = this.getIndex(wp.cursorX, wp.cursorY);
 		if (event.key == 'Backspace') {
 			this.deleteAt(positionInText);
-			if (this.content === '') {
+			if (this.content.value === '') {
 				this.shouldRemove = true;
 				// ModeManager.setMode(Modes.VIEW_MODE);
 			}
@@ -112,73 +156,93 @@ export class TextBox implements Shape {
 			this.addCharAt('\n', positionInText);
 			return true;
 		} else if (event.key.length <= 1) {
-			if (this.isOn(cursor.x, cursor.y)) {
+			if (this.isOn(cursorX, cursorY)) {
 				this.addCharAt(event.key, positionInText);
 			} else {
 				console.log('new textbox');
-				const newText = new TextBox(cursor, event.key);
+				const newText = new TextBox(cursorX, cursorY, event.key, ws.getId());
 				ws.elements.push(newText);
 				ws.selected = newText;
-				wp.moveCursor(new Vector2(1, 0));
+				wp.moveCursor(1, 0);
 			}
 			return true;
 		} else if (keymap.moveCursorUp.includes(event.key)) {
-			if (this.isOn(cursor.x, cursor.y - 1)) {
-				wp.moveCursor(new Vector2(0, -1));
+			if (this.isOn(cursorX, cursorY - 1)) {
+				wp.moveCursor(0, -1);
 			}
 			return true;
 		} else if (keymap.moveCursorDown.includes(event.key)) {
-			if (this.isOn(cursor.x, cursor.y + 1)) {
-				wp.moveCursor(new Vector2(0, 1));
+			if (this.isOn(cursorX, cursorY + 1)) {
+				wp.moveCursor(0, 1);
 			}
 			return true;
 		} else if (keymap.moveCursorLeft.includes(event.key)) {
-			if (this.isOn(cursor.x - 1, cursor.y)) {
-				wp.moveCursor(new Vector2(-1, 0));
+			if (this.isOn(cursorX - 1, cursorY)) {
+				wp.moveCursor(-1, 0);
 			}
 			return true;
 		} else if (keymap.moveCursorRight.includes(event.key)) {
-			if (this.isOn(cursor.x + 1, cursor.y)) {
-				wp.moveCursor(new Vector2(1, 0));
+			if (this.isOn(cursorX + 1, cursorY)) {
+				wp.moveCursor(1, 0);
 			}
 			return true;
 		}
 		return false;
 	}
 
-	interact(cursor: Vector2, event: KeyboardEvent): boolean {
+	interact(cursorX: number, cursorY: number, event: KeyboardEvent): boolean {
 		return false;
 	}
 
 	updateCursorPosition(offset: number) {
-		const positionInText = this.getIndex(wp.cursor.x, wp.cursor.y) + offset;
+		const positionInText = this.getIndex(wp.cursorX, wp.cursorY) + offset;
 		wp.setCursorCoords(
-			new Vector2(
-				this.position.x + (this.content.slice(0, positionInText).split('\n').at(-1) ?? []).length,
-				this.position.y + this.content.slice(0, positionInText).replaceAll(/[^\n]/g, '').length
-			)
+			this.positionX.value +
+				(this.content.value.slice(0, positionInText).split('\n').at(-1) ?? []).length,
+			this.positionY.value +
+				this.content.value.slice(0, positionInText).replaceAll(/[^\n]/g, '').length
 		);
 	}
 
-	move(cursor: Vector2, movement: Vector2) {
-		this.position.add(movement);
-		wp.moveCursor(movement);
+	move(cursorX: number, cursorY: number, deltaX: number, deltaY: number) {
+		this.positionX.value += deltaX;
+		this.positionY.value += deltaY;
+		wp.moveCursor(deltaX, deltaY);
 	}
 
-	static serialize(input: TextBox): string {
-		return JSON.stringify({
+	getBinding(name: string): Value {
+		const propertyName = this.bindings[name]['propertyName'] as keyof TextBox;
+		if (propertyName === undefined) {
+			throw new Error(`This item does not have a binding called '${name}'`);
+		}
+		return new Value((this[propertyName] as BindableInt).value, this.bindings[name]['type']);
+	}
+
+	setBinding(name: string, command: Command): void {
+		const propertyName = this.bindings[name]['propertyName'] as keyof TextBox;
+		if (propertyName === undefined) {
+			throw new Error(`This item does not have a binding called '${name}'`);
+		}
+		(this[propertyName] as BindableInt).bind(command);
+	}
+
+	static serialize(input: TextBox): SerializedShape {
+		return {
 			_type: 'TextBox',
-			position: input.position,
-			content: input.content
-		});
+			positionX: input.positionX.value,
+			positionY: input.positionY.value,
+			content: input.content.value,
+			id: input.id
+		};
 	}
 
-	static deserialize(input: string): TextBox | null {
-		const json = JSON.parse(input);
-		if (json['_type'] === 'TextBox') {
+	static deserialize(input: SerializedShape): TextBox | null {
+		if (input['_type'] === 'TextBox') {
 			return new TextBox(
-				new Vector2(json['position']['x'], json['position']['y']),
-				json['content']
+				input['positionX'] as number,
+				input['positionY'] as number,
+				input['content'] as string,
+				input['id'] as string
 			);
 		}
 		return null;

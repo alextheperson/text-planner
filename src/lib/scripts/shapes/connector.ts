@@ -1,60 +1,102 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Buffer from '../buffer';
-import Vector2 from '../vector';
+import { BindableBool, STATIC_TYPES } from '../dataType';
 import { Line } from './line';
-import type { Shape } from './shape';
+import type { Bindings, LineDirection, SerializedShape, Shape } from './shape';
 
 export class Connector extends Line implements Shape {
-	constructor(startX: number, startY: number, endX: number, endY: number) {
-		super(startX, startY, endX, endY);
+	bindings: Bindings = {
+		'start/x': {
+			propertyName: 'startX',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'start/y': {
+			propertyName: 'startY',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'end/x': {
+			propertyName: 'endX',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'end/y': {
+			propertyName: 'endY',
+			gettable: true,
+			settable: true,
+			type: STATIC_TYPES.INT
+		},
+		'midpoint/x': {
+			propertyName: 'midpointX',
+			gettable: true,
+			settable: false,
+			type: STATIC_TYPES.INT
+		},
+		'midpoint/y': {
+			propertyName: 'midpointY',
+			gettable: true,
+			settable: false,
+			type: STATIC_TYPES.INT
+		}
+	};
+	constructor(startX: number, startY: number, endX: number, endY: number, id: string) {
+		super(startX, startY, endX, endY, id);
 
 		console.log(startX, startY, endX, endY);
 	}
 
 	override render(className: string) {
 		this.updateDimensions();
-		const buffer = new Buffer(this.size.x, this.size.y, '');
+		const buffer = new Buffer(this.width.value, this.height.value, '');
 
-		if (this.startPosition.x == this.endPosition.x || this.startPosition.y == this.endPosition.y) {
+		if (this.startX.value == this.endX.value || this.startY.value == this.endY.value) {
 			const line = new Line(
-				this.startPosition.x - this.position.x,
-				this.startPosition.y - this.position.y,
-				this.endPosition.x - this.position.x,
-				this.endPosition.y - this.position.y
+				this.startX.value - this.positionX.value,
+				this.startY.value - this.positionY.value,
+				this.endX.value - this.positionX.value,
+				this.endY.value - this.positionY.value,
+				''
 			);
 			line.startArrow = this.startArrow;
 			line.endArrow = this.endArrow;
 			line.direction = this.direction;
 			buffer.composite(0, 0, line.render(className));
 		} else {
-			const midPoint = new Vector2(Math.floor(this.size.x / 2), Math.floor(this.size.y / 2));
+			const midPointX = Math.floor(this.width.value / 2);
+			const midPointY = Math.floor(this.height.value / 2);
 
 			const startLine = new Line(
-				this.startPosition.x - this.position.x,
-				this.startPosition.y - this.position.y,
-				midPoint.x,
-				midPoint.y
+				this.startX.value - this.positionX.value,
+				this.startY.value - this.positionY.value,
+				midPointX,
+				midPointY,
+				''
 			);
 			startLine.startArrow = this.startArrow;
 			startLine.direction = this.direction;
 			buffer.composite(
-				this.startPosition.x < this.endPosition.x ? 0 : midPoint.x,
-				this.startPosition.y < this.endPosition.y ? 0 : midPoint.y,
+				this.startX.value < this.endX.value ? 0 : midPointX,
+				this.startY.value < this.endY.value ? 0 : midPointY,
 				startLine.render(className)
 			);
 
 			const endLine = new Line(
-				midPoint.x,
-				midPoint.y,
-				this.endPosition.x - this.position.x,
-				this.endPosition.y - this.position.y
+				midPointX,
+				midPointY,
+				this.endX.value - this.positionX.value,
+				this.endY.value - this.positionY.value,
+				''
 			);
 			endLine.endArrow = this.endArrow;
 			endLine.direction = this.direction;
 			endLine.toggleDirection();
 			buffer.composite(
-				this.startPosition.x > this.endPosition.x ? 0 : midPoint.x,
-				this.startPosition.y > this.endPosition.y ? 0 : midPoint.y,
+				this.startX.value > this.endX.value ? 0 : midPointX,
+				this.startY.value > this.endY.value ? 0 : midPointY,
 				endLine.render(className)
 			);
 		}
@@ -65,37 +107,41 @@ export class Connector extends Line implements Shape {
 	override isOn(x: number, y: number) {
 		this.updateDimensions();
 
-		const localX = x - this.position.x;
-		const localY = y - this.position.y;
+		const localX = x - this.positionX.value;
+		const localY = y - this.positionY.value;
 
-		if (this.startPosition.x == this.endPosition.x || this.startPosition.y == this.endPosition.y) {
+		if (this.startX.value == this.endX.value || this.startY.value == this.endY.value) {
 			const line = new Line(
-				this.startPosition.x - this.position.x,
-				this.startPosition.y - this.position.y,
-				this.endPosition.x - this.position.x,
-				this.endPosition.y - this.position.y
+				this.startX.value - this.positionX.value,
+				this.startY.value - this.positionY.value,
+				this.endX.value - this.positionX.value,
+				this.endY.value - this.positionY.value,
+				''
 			);
 			line.startArrow = this.startArrow;
 			line.endArrow = this.endArrow;
 			line.direction = this.direction;
 			return line.isOn(localX, localY);
 		} else {
-			const midPoint = new Vector2(Math.floor(this.size.x / 2), Math.floor(this.size.y / 2));
+			const midPointX = Math.floor(this.width.value / 2);
+			const midPointY = Math.floor(this.height.value / 2);
 
 			const startLine = new Line(
-				this.startPosition.x - this.position.x,
-				this.startPosition.y - this.position.y,
-				midPoint.x,
-				midPoint.y
+				this.startX.value - this.positionX.value,
+				this.startY.value - this.positionY.value,
+				midPointX,
+				midPointY,
+				''
 			);
 			startLine.startArrow = this.startArrow;
 			startLine.direction = this.direction;
 
 			const endLine = new Line(
-				midPoint.x,
-				midPoint.y,
-				this.endPosition.x - this.position.x,
-				this.endPosition.y - this.position.y
+				midPointX,
+				midPointY,
+				this.endX.value - this.positionX.value,
+				this.endY.value - this.positionY.value,
+				''
 			);
 			endLine.endArrow = this.endArrow;
 			endLine.direction = this.direction;
@@ -104,33 +150,44 @@ export class Connector extends Line implements Shape {
 		}
 	}
 
-	interact(cursor: Vector2, event: KeyboardEvent): boolean {
+	interact(cursorX: number, cursorY: number, event: KeyboardEvent): boolean {
 		return false;
 	}
 
-	static serialize(input: Connector): string {
-		return JSON.stringify({
-			_type: 'Connector',
-			startPosition: input.startPosition,
-			endPosition: input.endPosition,
-			startArrow: input.startArrow,
-			endArrow: input.endArrow,
-			direction: input.direction
-		});
+	get midpointX(): number {
+		return Math.floor(this.width.value / 2);
 	}
 
-	static deserialize(input: string): Connector | null {
-		const json = JSON.parse(input);
-		if (json['_type'] === 'Connector') {
+	get midpointY(): number {
+		return Math.floor(this.height.value / 2);
+	}
+
+	static serialize(input: Connector): SerializedShape {
+		return {
+			_type: 'Connector',
+			id: input.id,
+			startX: input.startX.value,
+			startY: input.startY.value,
+			endX: input.endX.value,
+			endY: input.endY.value,
+			startArrow: input.startArrow.value,
+			endArrow: input.endArrow.value,
+			direction: input.direction
+		};
+	}
+
+	static deserialize(input: SerializedShape): Connector | null {
+		if (input['_type'] === 'Connector') {
 			const connector = new Connector(
-				json['startPosition']['x'],
-				json['startPosition']['y'],
-				json['endPosition']['x'],
-				json['endPosition']['y']
+				input['startX'] as number,
+				input['startY'] as number,
+				input['endX'] as number,
+				input['endY'] as number,
+				input['id'] as string
 			);
-			connector.startArrow = json['startArrow'];
-			connector.endArrow = json['endArrow'];
-			connector.direction = json['direction'];
+			connector.startArrow = new BindableBool(input['startArrow'] as boolean);
+			connector.endArrow = new BindableBool(input['endArrow'] as boolean);
+			connector.direction = input['direction'] as LineDirection;
 			return connector;
 		}
 		return null;

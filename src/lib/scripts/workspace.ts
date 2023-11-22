@@ -3,11 +3,10 @@ import Buffer from './buffer';
 import { parseExpression, CommandOutput, OUTPUT_TYPE } from './commands';
 import ModeManager, { CommandMode, Modes } from './modes';
 import { ShapeList as SHAPES } from './shapes/index';
-import { FRAME_CHARS, type Shape } from './shapes/shape';
+import { FRAME_CHARS, type SerializedShape, type Shape } from './shapes/shape';
 import { TextBox } from './shapes/textbox';
-import Vector2 from './vector';
 import { wp } from '$lib/components/stores';
-import { Value } from './dataType';
+import { STATIC_TYPES, Value } from './dataType';
 
 import './commands/create';
 import './commands/edit';
@@ -43,18 +42,18 @@ class Workspace {
 		// 	this.showCommandCursor = !this.showCommandCursor;
 		// 	this.drawScreen();
 		// }, 550);
-		this.displayBuffer = new Buffer(wp.canvasSize.x, wp.canvasSize.y, ' ');
+		this.displayBuffer = new Buffer(wp.canvasWidth, wp.canvasHeight, ' ');
 
 		wp.subscribe(() => {
 			this.drawScreen();
 		});
 
-		wp.setCursorCoords(new Vector2(0, 0));
+		wp.setCursorCoords(0, 0);
 	}
 
 	underCursor(): Shape | null {
 		for (let i = 0; i < this.elements.length; i++) {
-			if (this.elements[i] && this.elements[i].isOn(wp.cursor.x, wp.cursor.y)) {
+			if (this.elements[i] && this.elements[i].isOn(wp.cursorX, wp.cursorY)) {
 				return this.elements[i];
 			}
 		}
@@ -66,13 +65,13 @@ class Workspace {
 	// }
 
 	drawScreen() {
-		this.displayBuffer = new Buffer(wp.canvasSize.x, wp.canvasSize.y, '&nbsp;');
+		this.displayBuffer = new Buffer(wp.canvasWidth, wp.canvasHeight, '&nbsp;');
 
 		for (let i = 0; i < this.elements.length; i++) {
 			// Display the user's content
 			this.displayBuffer.composite(
-				this.elements[i].position.x - wp.canvas.x,
-				this.elements[i].position.y - wp.canvas.y,
+				this.elements[i].positionX.value - wp.canvasX,
+				this.elements[i].positionY.value - wp.canvasY,
 				this.elements[i].render(this.elements[i] == this.selected ? 'selected' : '')
 			);
 		}
@@ -84,11 +83,11 @@ class Workspace {
 		for (let i = 1; i < this.displayBuffer.width - 1; i++) {
 			// Horizontal ruler
 			if (
-				(i + wp.canvas.x) % 10 == 0 &&
-				(i + wp.canvas.x).toString().length - 1 < this.displayBuffer.width - i
+				(i + wp.canvasX) % 10 == 0 &&
+				(i + wp.canvasX).toString().length - 1 < this.displayBuffer.width - i
 			) {
-				const string = ` ${(i + wp.canvas.x).toString()} `;
-				this.displayBuffer.composite(i - 1, 0, new TextBox(new Vector2(0, 0), string).render(''));
+				const string = ` ${(i + wp.canvasX).toString()} `;
+				this.displayBuffer.composite(i - 1, 0, new TextBox(0, 0, string, this.getId()).render(''));
 			}
 		}
 		for (let i = 1; i < this.displayBuffer.height - 1; i++) {
@@ -98,14 +97,14 @@ class Workspace {
 		for (let i = 1; i < this.displayBuffer.height - 1; i++) {
 			// Vertical ruler
 			if (
-				(i + wp.canvas.y) % 10 == 0 &&
-				(i + wp.canvas.y).toString().length + 1 < this.displayBuffer.height - i
+				(i + wp.canvasY) % 10 == 0 &&
+				(i + wp.canvasY).toString().length + 1 < this.displayBuffer.height - i
 			) {
-				const string = ` ${(i + wp.canvas.y).toString()} `;
+				const string = ` ${(i + wp.canvasY).toString()} `;
 				this.displayBuffer.composite(
 					0,
 					i - 1,
-					new TextBox(new Vector2(0, 0), string.split('').join('\n')).render('')
+					new TextBox(0, 0, string.split('').join('\n'), this.getId()).render('')
 				);
 			}
 		}
@@ -129,22 +128,24 @@ class Workspace {
 			8,
 			this.displayBuffer.height - 2,
 			new TextBox(
-				new Vector2(0, 0),
+				0,
+				0,
 				'&lt;|' +
 					(ModeManager.currentMode instanceof CommandMode
 						? ModeManager.currentMode.currentCommand + '_'
-						: '')
+						: ''),
+				this.getId()
 			).render('')
 		); // Display the command prompt
 		this.displayBuffer.composite(
 			8,
 			this.displayBuffer.height - 1,
-			new TextBox(new Vector2(0, 0), '|>').render('')
+			new TextBox(0, 0, '|>', this.getId()).render('')
 		);
 		this.displayBuffer.composite(
 			10,
 			this.displayBuffer.height - 1,
-			new TextBox(new Vector2(0, 0), this.currentOutput.message).render(
+			new TextBox(0, 0, this.currentOutput.message, this.getId()).render(
 				this.currentOutput.type == OUTPUT_TYPE.NORMAL
 					? ''
 					: this.currentOutput.type == OUTPUT_TYPE.ERROR
@@ -157,12 +158,12 @@ class Workspace {
 		this.displayBuffer.composite(
 			0,
 			this.displayBuffer.height - 2,
-			new TextBox(new Vector2(0, 0), modeString).render('')
+			new TextBox(0, 0, modeString, this.getId()).render('')
 		);
 		this.displayBuffer.composite(
 			0,
 			this.displayBuffer.height - 1,
-			new TextBox(new Vector2(0, 0), permString).render('')
+			new TextBox(0, 0, permString, this.getId()).render('')
 		);
 
 		if (ModeManager.currentMode instanceof CommandMode) {
@@ -177,7 +178,7 @@ class Workspace {
 			this.displayBuffer.composite(
 				ModeManager.currentMode.currentCommand.lastIndexOf(' ') + 9,
 				this.displayBuffer.height - ModeManager.currentMode.options.length - 3,
-				new TextBox(new Vector2(0, 0), optionString).render('')
+				new TextBox(0, 0, optionString, this.getId()).render('')
 			);
 		}
 
@@ -189,7 +190,7 @@ class Workspace {
 			const output = parseExpression(command);
 			if (output instanceof Value) {
 				this.currentOutput = new CommandOutput(
-					`(${output.type}) ${output.value}`,
+					`(${STATIC_TYPES[output.type]}) ${output.value}`,
 					OUTPUT_TYPE.NORMAL
 				);
 			}
@@ -220,12 +221,14 @@ class Workspace {
 			OUTPUT_TYPE.NORMAL
 		);
 		string = JSON.stringify({
-			cursorPosition: wp.cursor,
-			viewPosition: new Vector2(wp.canvas.x, wp.canvas.y),
+			cursorPositionX: wp.cursorX,
+			cursorPositionY: wp.cursorY,
+			viewPositionX: wp.canvasX,
+			viewPositionY: wp.canvasY,
 			allowedModes: this.allowedModes
 		});
 		this.elements.forEach((el) => {
-			const stringified = (el.constructor as typeof Shape).serialize(el);
+			const stringified = JSON.stringify((el.constructor as typeof Shape).serialize(el));
 			if (stringified.match(/.*\[,\].*/) !== null) {
 				output = new CommandOutput(
 					`Saved the workspace to file ${normalizedPath}, but it contained '[,]' which had to be escaped.`,
@@ -258,24 +261,22 @@ class Workspace {
 				return;
 			}
 			for (let i = 0; i < SHAPES.length; i++) {
-				const decoded = SHAPES[i].deserialize(el);
+				const decoded = SHAPES[i].deserialize(JSON.parse(el) as SerializedShape);
 				if (decoded !== null) {
 					this.elements.push(decoded);
 				}
 			}
 		});
 		this.fileName = normalizedPath;
-		wp.setCursorCoords(
-			new Vector2(state['cursorPosition']['x'] ?? 0, state['cursorPosition']['y'] ?? 0)
-		);
-		wp.setCanvasCoords(new Vector2(state['viewPosition']['x'], state['viewPosition']['y']));
+		wp.setCursorCoords(state['cursorPosition']['x'] ?? 0, state['cursorPosition']['y'] ?? 0);
+		wp.setCanvasCoords(state['viewPosition']['x'], state['viewPosition']['y']);
 		this.allowedModes = state['allowedModes'];
 		ModeManager.setMode(Modes.VIEW_MODE);
 		return new CommandOutput(`Loaded the workspace ${path}`, OUTPUT_TYPE.NORMAL);
 	}
 
-	getId(): number {
-		return 1;
+	getId(): string {
+		return '1';
 	}
 }
 

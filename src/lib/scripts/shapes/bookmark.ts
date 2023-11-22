@@ -1,24 +1,29 @@
-import Vector2 from '../vector';
 import { PrefixedLine } from './prefixedLine';
-import type { Shape } from './shape';
+import type { SerializedShape, Shape } from './shape';
 
 export class Bookmark extends PrefixedLine implements Shape {
-	constructor(position: Vector2, name: string) {
-		super(position, '\u2302 ', name);
+	constructor(positionX: number, positionY: number, name: string, id: string) {
+		super(positionX, positionY, '\u2302 ', name, id);
 	}
 
-	static serialize(input: Bookmark): string {
-		return JSON.stringify({
+	static serialize(input: Bookmark): SerializedShape {
+		return {
 			_type: 'Bookmark',
-			position: input.position,
-			name: input.content
-		});
+			id: input.id,
+			positionX: input.positionX.value,
+			positionY: input.positionY.value,
+			name: input.content.value
+		};
 	}
 
-	static deserialize(input: string): Bookmark | null {
-		const json = JSON.parse(input);
-		if (json['_type'] === 'Bookmark') {
-			return new Bookmark(new Vector2(json['position']['x'], json['position']['y']), json['name']);
+	static deserialize(input: SerializedShape): Bookmark | null {
+		if (input['_type'] === 'Bookmark') {
+			return new Bookmark(
+				input['positionX'] as number,
+				input['positionY'] as number,
+				input['name'] as string,
+				input['id'] as string
+			);
 		}
 		return null;
 	}

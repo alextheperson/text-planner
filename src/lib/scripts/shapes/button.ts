@@ -1,41 +1,46 @@
-import { parseExpression } from '../commands';
+import { Command } from '../commands';
 import { keymap } from '../keymap';
-import Vector2 from '../vector';
 import { PrefixedLine } from './prefixedLine';
-import type { Shape } from './shape';
+import type { SerializedShape, Shape } from './shape';
 
 export class Button extends PrefixedLine implements Shape {
-	action: string;
+	action: Command;
 
-	constructor(position: Vector2, action: string, content: string) {
-		super(position, '\u25ba ', content);
+	constructor(positionX: number, positionY: number, action: Command, content: string, id: string) {
+		super(positionX, positionY, '\u25ba ', content, id);
 		this.action = action;
 	}
 
-	interact(cursor: Vector2, event: KeyboardEvent): boolean {
+	interact(cursorX: number, cursorY: number, event: KeyboardEvent): boolean {
 		if (keymap.confirm.includes(event.key)) {
-			parseExpression(this.action);
+			this.action.execute();
 			return true;
 		}
 		return false;
 	}
 
-	static serialize(input: Button): string {
-		return JSON.stringify({
+	static serialize(input: Button): SerializedShape {
+		return {
 			_type: 'Button',
-			position: input.position,
+			id: input.id,
+			positionY: input.positionX.value,
+			positionX: input.positionY.value,
 			action: input.action,
-			content: input.content
-		});
+			content: input.content.value
+		};
 	}
 
-	static deserialize(input: string): Button | null {
-		const json = JSON.parse(input);
-		if (json['_type'] === 'Button') {
+	static deserialize(input: SerializedShape): Button | null {
+		if (input['_type'] === 'Button') {
 			return new Button(
-				new Vector2(json['position']['x'], json['position']['y']),
-				json['action'],
-				json['content']
+				input['positionX'] as number,
+				input['positionY'] as number,
+				new Command(
+					(input['action'] as Command).name,
+					(input['action'] as Command).parameters
+				) as Command,
+				input['content'] as string,
+				input['id'] as string
 			);
 		}
 		return null;

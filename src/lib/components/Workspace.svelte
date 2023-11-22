@@ -4,34 +4,31 @@
 	import { wp, display } from './stores';
 	import { workspace as ws } from '$lib/scripts/workspace';
 	import ModeManager from '$lib/scripts/modes';
-	import Vector2 from '$lib/scripts/vector';
 
 	let displayString: string;
-	let cursorPos = new Vector2(0, 0);
+	let cursorX = 0;
+	let cursorY = 0;
 
 	display.subscribe((value) => (displayString = value));
 
 	wp.subscribe(() => {
-		cursorPos = new Vector2(
-			(wp.cursor.x - wp.canvas.x) * wp.characterSize.x,
-			(wp.cursor.y - wp.canvas.y) * wp.characterSize.y
-		);
+		cursorX = (wp.cursorX - wp.canvasX) * wp.characterWidth;
+		cursorY = (wp.cursorY - wp.canvasY) * wp.characterHeight;
 	});
 
 	onMount(() => {
 		if (browser) {
 			let rect = document.getElementById('sizing')?.getBoundingClientRect();
-			wp.characterSize = new Vector2(rect?.width ?? 1, rect?.height ?? 1);
+			wp.characterWidth = rect?.width ?? 1;
+			wp.characterHeight = rect?.height ?? 1;
 			window.addEventListener('resize', setViewSize);
 		}
 		setViewSize();
 	});
 
 	function setViewSize() {
-		wp.canvasSize = new Vector2(
-			Math.floor(window.innerWidth / wp.characterSize.x),
-			Math.floor(window.innerHeight / wp.characterSize.y)
-		);
+		wp.canvasWidth = Math.floor(window.innerWidth / wp.characterWidth);
+		wp.canvasHeight = Math.floor(window.innerHeight / wp.characterHeight);
 	}
 
 	function click(e: MouseEvent) {
@@ -61,23 +58,23 @@
 <svelte:window on:click={click} on:keydown={keydown} on:paste={paste} />
 <div
 	class="background-fill"
-	style:height={wp.canvasSize.y * wp.characterSize.y + 'px'}
-	style:width={wp.canvasSize.x * wp.characterSize.x + 'px'}
+	style:height={wp.canvasHeight * wp.characterHeight + 'px'}
+	style:width={wp.canvasWidth * wp.characterWidth + 'px'}
 />
 <div
 	class="background"
-	style:background-size="{wp.characterSize.x}px {wp.characterSize.y}px"
-	style:transform="translate(-{wp.characterSize.x / 2}px, -{wp.characterSize.y / 2}px)"
+	style:background-size="{wp.characterWidth}px {wp.characterHeight}px"
+	style:transform="translate(-{wp.characterWidth / 2}px, -{wp.characterHeight / 2}px)"
 />
 <pre class="workspace">{@html displayString}</pre>
 <pre id="sizing">a</pre>
 
 <div
 	class="cursor"
-	style:left={cursorPos.x + 'px'}
-	style:top={cursorPos.y + 'px'}
-	style:width={wp.characterSize.x + 'px'}
-	style:height={wp.characterSize.y + 'px'}
+	style:left={cursorX + 'px'}
+	style:top={cursorY + 'px'}
+	style:width={wp.characterWidth + 'px'}
+	style:height={wp.characterHeight + 'px'}
 />
 
 <style lang="scss">

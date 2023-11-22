@@ -1,10 +1,9 @@
 import { workspace as ws } from '../workspace';
 import { Modes } from '../modes';
-import Vector2 from '../vector';
 import { Button } from '../shapes/button';
 import { Bookmark } from '../shapes/bookmark';
 import { wp } from '$lib/components/stores';
-import { CommandDefinition, CommandOutput, OUTPUT_TYPE } from '../commands';
+import { Command, CommandDefinition, CommandOutput, OUTPUT_TYPE } from '../commands';
 import { STATIC_TYPES, Value } from '../dataType';
 
 console.log('registered');
@@ -85,11 +84,17 @@ new CommandDefinition('ls')
 			for (let k = 0; k < keys.length; k++) {
 				if (typeof tree[keys[k]] == 'string') {
 					ws.elements.push(
-						new Button(new Vector2(indentation, height), `:load ${tree[keys[k]]}`, keys[k])
+						new Button(
+							indentation,
+							height,
+							new Command('load', [new Value(tree[keys[k]] as string, STATIC_TYPES.STRING)]),
+							keys[k],
+							`f-${tree[keys[k]]}`
+						)
 					);
 					height += 1;
 				} else {
-					ws.elements.push(new Bookmark(new Vector2(indentation, height), `/${keys[k]}/`));
+					ws.elements.push(new Bookmark(indentation, height, `/${keys[k]}/`, `b-${keys[k]}`));
 					height += 1;
 					drawFiles(tree[keys[k]] as _FolderTree, indentation + 2);
 				}
@@ -97,8 +102,8 @@ new CommandDefinition('ls')
 		};
 		drawFiles(folderStructure, 0);
 		ws.allowedModes = [Modes.VIEW_MODE, Modes.COMMAND];
-		wp.setCanvasCoords(new Vector2(0, 0));
-		wp.setCursorCoords(new Vector2(0, 0));
+		wp.setCanvasCoords(0, 0);
+		wp.setCursorCoords(0, 0);
 
 		// ws.elements.push(new Button(new Vector2(0, i), `load ${files[i]}`, files[i]));
 		// `Opened file browser. To exit, press the back button, enter ':back' or enter ':load "$tmp"'`
