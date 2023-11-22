@@ -59,6 +59,7 @@ export class Line extends TwoPointShape implements Shape {
 	}
 
 	override render(className: string) {
+		console.log(this.startArrow, this.endArrow);
 		this.updateDimensions();
 		const buffer = new Buffer(this.width.value, this.height.value, '');
 
@@ -108,7 +109,7 @@ export class Line extends TwoPointShape implements Shape {
 			className
 		);
 
-		if (this.startArrow) {
+		if (this.startArrow.value === true) {
 			const startCharacter =
 				(this.startX.value !== this.endX.value && this.direction === LineDirection.X_FIRST) ||
 				(this.startY.value === this.endY.value && this.direction === LineDirection.Y_FIRST)
@@ -125,7 +126,7 @@ export class Line extends TwoPointShape implements Shape {
 				className
 			);
 		}
-		if (this.endArrow) {
+		if (this.endArrow.value === true) {
 			const endCharacter =
 				(this.startX.value !== this.endX.value && this.direction === LineDirection.Y_FIRST) ||
 				(this.startY.value === this.endY.value && this.direction === LineDirection.X_FIRST)
