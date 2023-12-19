@@ -101,6 +101,10 @@ export class TextBox implements Shape {
 
 	input(cursor: Vector2, event: KeyboardEvent) {
 		const positionInText = this.getIndex(wp.cursor.x, wp.cursor.y);
+		if (this.content !== '') {
+			this.shouldRemove = false;
+			// ModeManager.setMode(Modes.VIEW_MODE);
+		}
 		if (event.key == 'Backspace') {
 			this.deleteAt(positionInText);
 			if (this.content === '') {
