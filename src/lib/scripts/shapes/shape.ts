@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type Buffer from '../buffer';
 import type { Command } from '../commands';
-import type { BindableInt, STATIC_TYPES, Value } from '../dataType';
+import type {
+	BindableInt,
+	STATIC_TYPES,
+	Value,
+	SerializedBindable,
+	BindingList
+} from '../dataType';
 
 export const FRAME_CHARS = [
 	[
@@ -62,7 +68,7 @@ export abstract class Shape {
 	/**
 	 * The binding that the shape has. They can (and should) be namespaced with slashes ("position/x")
 	 */
-	abstract readonly bindings: Bindings;
+	abstract readonly bindings: BindingList;
 	abstract shouldRemove: boolean;
 	abstract readonly id: string;
 
@@ -76,8 +82,6 @@ export abstract class Shape {
 	 * @returns `true` if the keyboard event had any effect on the shape
 	 */
 	abstract interact(cursorX: number, cursorY: number, event: KeyboardEvent): boolean;
-	abstract getBinding(name: string): Value;
-	abstract setBinding(name: string, command: Command): void;
 	abstract isOn(x: number, y: number): boolean;
 	// abstract getAttribute(name: string): CommandOutput;
 	static serialize(input: Shape): SerializedShape {
@@ -91,5 +95,12 @@ export abstract class Shape {
 export type SerializedShape = {
 	_type: string;
 	id: string;
-	[index: string]: string | number | boolean | Command;
+	[index: string]:
+		| string
+		| number
+		| boolean
+		| Command
+		| SerializedBindable<string>
+		| SerializedBindable<number>
+		| SerializedBindable<boolean>;
 };

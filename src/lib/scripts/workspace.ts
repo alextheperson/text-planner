@@ -6,14 +6,16 @@ import { ShapeList as SHAPES } from './shapes/index';
 import { FRAME_CHARS, type SerializedShape, type Shape } from './shapes/shape';
 import { TextBox } from './shapes/textbox';
 import { wp } from '$lib/components/stores';
-import { STATIC_TYPES, Value } from './dataType';
+import { BindableInt, BindableString, STATIC_TYPES, Value } from './dataType';
 
+import './commands/bindings';
 import './commands/create';
 import './commands/edit';
 import './commands/io';
 import './commands/math';
 import './commands/movement';
 import './commands/settings';
+import './commands/logic';
 
 class Workspace {
 	selected: Shape | null = null;
@@ -36,6 +38,9 @@ class Workspace {
 	writable = true;
 	allowedModes = [Modes.VIEW_MODE, Modes.EDIT_MODE, Modes.MOVE_MODE, Modes.COMMAND];
 	fileName = '';
+
+	activeBindings: { x: number; y: number }[] = [];
+	isFirstFrame = false;
 
 	constructor() {
 		// setInterval(() => {
@@ -76,6 +81,18 @@ class Workspace {
 			);
 		}
 
+		for (let i = 0; i < this.activeBindings.length; i++)
+			this.displayBuffer.composite(
+				this.activeBindings[i].x - wp.canvasX,
+				this.activeBindings[i].y - wp.canvasY,
+				new TextBox(
+					new BindableInt(0),
+					new BindableInt(0),
+					new BindableString('X'),
+					this.getId()
+				).render('')
+			); // Display bindings
+
 		for (let i = 1; i < this.displayBuffer.width - 1; i++) {
 			// Horizontal ruler
 			this.displayBuffer.setChar(i, 0, FRAME_CHARS[0][0][1][1], '');
@@ -87,9 +104,20 @@ class Workspace {
 				(i + wp.canvasX).toString().length - 1 < this.displayBuffer.width - i
 			) {
 				const string = ` ${(i + wp.canvasX).toString()} `;
-				this.displayBuffer.composite(i - 1, 0, new TextBox(0, 0, string, this.getId()).render(''));
+				this.displayBuffer.composite(
+					i - 1,
+					0,
+					new TextBox(
+						new BindableInt(0),
+						new BindableInt(0),
+						new BindableString(string),
+						this.getId()
+					).render('')
+				);
 			}
 		}
+		this.displayBuffer.setChar(wp.cursorX - wp.canvasX, 1, FRAME_CHARS[1][1][0][0], '');
+
 		for (let i = 1; i < this.displayBuffer.height - 1; i++) {
 			// Vertical ruler
 			this.displayBuffer.setChar(0, i, FRAME_CHARS[1][1][0][0], '');
@@ -104,10 +132,16 @@ class Workspace {
 				this.displayBuffer.composite(
 					0,
 					i - 1,
-					new TextBox(0, 0, string.split('').join('\n'), this.getId()).render('')
+					new TextBox(
+						new BindableInt(0),
+						new BindableInt(0),
+						new BindableString(string.split('').join('\n')),
+						this.getId()
+					).render('')
 				);
 			}
 		}
+		this.displayBuffer.setChar(1, wp.cursorY - wp.canvasY, FRAME_CHARS[0][0][1][1], '');
 
 		this.displayBuffer.setChar(0, 0, FRAME_CHARS[0][1][0][1], '');
 
@@ -128,24 +162,36 @@ class Workspace {
 			8,
 			this.displayBuffer.height - 2,
 			new TextBox(
-				0,
-				0,
-				'&lt;|' +
-					(ModeManager.currentMode instanceof CommandMode
-						? ModeManager.currentMode.currentCommand + '_'
-						: ''),
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(
+					'&lt;|' +
+						(ModeManager.currentMode instanceof CommandMode
+							? ModeManager.currentMode.currentCommand + '_'
+							: '')
+				),
 				this.getId()
 			).render('')
 		); // Display the command prompt
 		this.displayBuffer.composite(
 			8,
 			this.displayBuffer.height - 1,
-			new TextBox(0, 0, '|>', this.getId()).render('')
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString('|>'),
+				this.getId()
+			).render('')
 		);
 		this.displayBuffer.composite(
 			10,
 			this.displayBuffer.height - 1,
-			new TextBox(0, 0, this.currentOutput.message, this.getId()).render(
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(this.currentOutput.message),
+				this.getId()
+			).render(
 				this.currentOutput.type == OUTPUT_TYPE.NORMAL
 					? ''
 					: this.currentOutput.type == OUTPUT_TYPE.ERROR
@@ -158,12 +204,22 @@ class Workspace {
 		this.displayBuffer.composite(
 			0,
 			this.displayBuffer.height - 2,
-			new TextBox(0, 0, modeString, this.getId()).render('')
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(modeString),
+				this.getId()
+			).render('')
 		);
 		this.displayBuffer.composite(
 			0,
 			this.displayBuffer.height - 1,
-			new TextBox(0, 0, permString, this.getId()).render('')
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(permString),
+				this.getId()
+			).render('')
 		);
 
 		if (ModeManager.currentMode instanceof CommandMode) {
@@ -178,11 +234,17 @@ class Workspace {
 			this.displayBuffer.composite(
 				ModeManager.currentMode.currentCommand.lastIndexOf(' ') + 9,
 				this.displayBuffer.height - ModeManager.currentMode.options.length - 3,
-				new TextBox(0, 0, optionString, this.getId()).render('')
+				new TextBox(
+					new BindableInt(0),
+					new BindableInt(0),
+					new BindableString(optionString),
+					this.getId()
+				).render('')
 			);
 		}
 
 		display.set(this.displayBuffer.render());
+		this.isFirstFrame = false;
 	}
 
 	runCommand(command: string) {
@@ -207,7 +269,9 @@ class Workspace {
 	cullElements() {
 		for (let i = 0; i < this.elements.length; i++) {
 			if (this.elements[i].shouldRemove) {
+				console.log(this.elements[i]);
 				this.elements.splice(i, 1);
+				console.log(this.elements, i);
 				i -= 1; //since we just deleted an element
 			}
 		}
@@ -248,6 +312,7 @@ class Workspace {
 	}
 
 	loadElements(path: string): CommandOutput {
+		this.isFirstFrame = true;
 		const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
 		const parts = localStorage.getItem(normalizedPath)?.split('[,]') ?? [];
 		if (parts.length < 1) {
@@ -268,15 +333,15 @@ class Workspace {
 			}
 		});
 		this.fileName = normalizedPath;
-		wp.setCursorCoords(state['cursorPosition']['x'] ?? 0, state['cursorPosition']['y'] ?? 0);
-		wp.setCanvasCoords(state['viewPosition']['x'], state['viewPosition']['y']);
+		wp.setCursorCoords(state['cursorPositionX'] ?? 0, state['cursorPositionY'] ?? 0);
+		wp.setCanvasCoords(state['viewPositionX'], state['viewPositionY']);
 		this.allowedModes = state['allowedModes'];
 		ModeManager.setMode(Modes.VIEW_MODE);
 		return new CommandOutput(`Loaded the workspace ${path}`, OUTPUT_TYPE.NORMAL);
 	}
 
 	getId(): string {
-		return '1';
+		return 'a' + Math.floor(Math.random() * 1000);
 	}
 }
 

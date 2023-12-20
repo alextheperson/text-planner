@@ -8,18 +8,31 @@ import { Button } from '../shapes/button';
 import { wp } from '$lib/components/stores';
 import Bracket from '../shapes/bracket';
 import { Command, CommandDefinition } from '../commands';
-import { STATIC_TYPES, Value } from '../dataType';
+import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
 
 new CommandDefinition('new')
 	.addOverride(() => {
-		ws.elements.push(new TextBox(wp.cursorX, wp.cursorY, 'New Text', ws.getId()));
-		console.log('abc');
+		ws.elements.push(
+			new TextBox(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableString('New Text'),
+				ws.getId()
+			)
+		);
 		// `New TextBox created at (${ws.cursorX}, ${ws.cursorY})`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['text'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(new TextBox(wp.cursorX, wp.cursorY, params[1].value as string, ws.getId()));
+			ws.elements.push(
+				new TextBox(
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
+					new BindableString(params[1].value as string),
+					ws.getId()
+				)
+			);
 			console.log('abc');
 			// `New TextBox created at (${ws.cursorX}, ${ws.cursorY}) with the content '${params[1].parsed.toString()}'`
 			return new Value(null, STATIC_TYPES.NULL);
@@ -28,7 +41,15 @@ new CommandDefinition('new')
 		STATIC_TYPES.STRING
 	)
 	.addOverride(() => {
-		ws.elements.push(new Line(wp.cursorX, wp.cursorY, wp.cursorX + 5, wp.cursorY + 5, ws.getId()));
+		ws.elements.push(
+			new Line(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(wp.cursorX + 5),
+				new BindableInt(wp.cursorY + 5),
+				ws.getId()
+			)
+		);
 		// `New Line created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`
 
 		return new Value(null, STATIC_TYPES.NULL);
@@ -37,10 +58,10 @@ new CommandDefinition('new')
 		(params) => {
 			ws.elements.push(
 				new Line(
-					params[1].value as number,
-					params[2].value as number,
-					params[3].value as number,
-					params[4].value as number,
+					new BindableInt(params[1].value as number),
+					new BindableInt(params[2].value as number),
+					new BindableInt(params[3].value as number),
+					new BindableInt(params[4].value as number),
 					ws.getId()
 				)
 			);
@@ -56,7 +77,13 @@ new CommandDefinition('new')
 	)
 	.addOverride(() => {
 		ws.elements.push(
-			new Connector(wp.cursorX, wp.cursorY, wp.cursorX + 5, wp.cursorY + 5, ws.getId())
+			new Connector(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(wp.cursorX + 5),
+				new BindableInt(wp.cursorY + 5),
+				ws.getId()
+			)
 		);
 		// `New Connector created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`,
 		return new Value(null, STATIC_TYPES.NULL);
@@ -66,10 +93,10 @@ new CommandDefinition('new')
 			console.log(params[1].value);
 			ws.elements.push(
 				new Connector(
-					params[1].value as number,
-					params[2].value as number,
-					params[3].value as number,
-					params[4].value as number,
+					new BindableInt(params[1].value as number),
+					new BindableInt(params[2].value as number),
+					new BindableInt(params[3].value as number),
+					new BindableInt(params[4].value as number),
 					ws.getId()
 				)
 			);
@@ -84,7 +111,13 @@ new CommandDefinition('new')
 	)
 	.addOverride(() => {
 		ws.elements.push(
-			new Rectangle(wp.cursorX, wp.cursorY, wp.cursorX + 5, wp.cursorY + 5, ws.getId())
+			new Rectangle(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(wp.cursorX + 5),
+				new BindableInt(wp.cursorY + 5),
+				ws.getId()
+			)
 		);
 		// `New Rectangle created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`
 		return new Value(null, STATIC_TYPES.NULL);
@@ -93,10 +126,10 @@ new CommandDefinition('new')
 		(params) => {
 			ws.elements.push(
 				new Rectangle(
-					params[1].value as number,
-					params[2].value as number,
-					params[3].value as number,
-					params[4].value as number,
+					new BindableInt(params[1].value as number),
+					new BindableInt(params[2].value as number),
+					new BindableInt(params[3].value as number),
+					new BindableInt(params[4].value as number),
 					ws.getId()
 				)
 			);
@@ -110,13 +143,27 @@ new CommandDefinition('new')
 		STATIC_TYPES.INT
 	)
 	.addOverride(() => {
-		ws.elements.push(new Bookmark(wp.cursorX, wp.cursorY, 'New Bookmark', ws.getId()));
+		ws.elements.push(
+			new Bookmark(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableString('New Bookmark'),
+				ws.getId()
+			)
+		);
 		// `New Bookmark created at (${ws.cursorX}, ${ws.cursorY})`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['bookmark'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(new Bookmark(wp.cursorX, wp.cursorY, params[1].value as string, ws.getId()));
+			ws.elements.push(
+				new Bookmark(
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
+					new BindableString(params[1].value as string),
+					ws.getId()
+				)
+			);
 			// `New Bookmark created at (${ws.cursorX}, ${ws.cursorY}) with the name ${params[1].parsed as string}`
 			return new Value(null, STATIC_TYPES.NULL);
 		},
@@ -127,7 +174,13 @@ new CommandDefinition('new')
 	.addOverride(
 		(params) => {
 			ws.elements.push(
-				new Button(wp.cursorX, wp.cursorY, params[1].value as Command, 'New Button', ws.getId())
+				new Button(
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
+					params[1].value as Command,
+					new BindableString('New Button'),
+					ws.getId()
+				)
 			);
 			// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string}`
 			return new Value(null, STATIC_TYPES.NULL);
@@ -139,10 +192,10 @@ new CommandDefinition('new')
 		(params) => {
 			ws.elements.push(
 				new Button(
-					wp.cursorX,
-					wp.cursorY,
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
 					params[1].value as Command,
-					params[2].value as string,
+					new BindableString(params[2].value as string),
 					ws.getId()
 				)
 			);
@@ -155,7 +208,14 @@ new CommandDefinition('new')
 		STATIC_TYPES.STRING
 	)
 	.addOverride(() => {
-		ws.elements.push(new Bracket(wp.cursorX, wp.cursorY, 3, ws.getId()));
+		ws.elements.push(
+			new Bracket(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(3),
+				ws.getId()
+			)
+		);
 		// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['bracket'])

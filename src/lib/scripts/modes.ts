@@ -1,5 +1,6 @@
 import { wp } from '$lib/components/stores';
-import { getNextParameters } from './commands';
+import { Command, getNextParameters, parseExpression } from './commands';
+import { STATIC_TYPES, type Binding, Value } from './dataType';
 import { keymap } from './keymap';
 import { workspace as ws } from './workspace';
 
@@ -65,6 +66,7 @@ class ViewMode implements Mode {
 			ws.selected.interact(wp.cursorX, wp.cursorY, event);
 		}
 		ws.selected = ws.underCursor();
+		ws.activeBindings = [];
 		ws.drawScreen();
 	}
 
@@ -79,16 +81,17 @@ class ViewMode implements Mode {
 }
 
 class MoveMode implements Mode {
+	willAutoBind = true;
 	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${keymap.moveViewLeft[0]}], [${keymap.moveViewRight[0]}]: Move View. [${keymap.moveCursorUp[0]}], [${keymap.moveCursorDown[0]}], [${keymap.moveCursorLeft[0]}], [${keymap.moveCursorRight[0]}]: Move Object. [${keymap.viewMode[0]}]: View Mode.`;
+
+	constructor() {
+		ws.selected = ws.underCursor();
+	}
 
 	input(event: KeyboardEvent) {
 		let deltaX = 0;
 		let deltaY = 0;
-		if (
-			keymap.confirm.includes(event.key) ||
-			keymap.cancel.includes(event.key) ||
-			keymap.viewMode.includes(event.key)
-		) {
+		if (keymap.confirm.includes(event.key) || keymap.viewMode.includes(event.key)) {
 			ModeManager.setMode(Modes.VIEW_MODE);
 		} else if (keymap.moveViewUp.includes(event.key)) {
 			wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
@@ -106,10 +109,16 @@ class MoveMode implements Mode {
 			deltaX = -(event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveCursorRight.includes(event.key)) {
 			deltaX = event.shiftKey ? FAST_MOVE_SPEED : 1;
+		} else if (keymap.cancel.includes(event.key)) {
+			this.willAutoBind = !this.willAutoBind;
 		}
 		ws.selected?.move(wp.cursorX, wp.cursorY, deltaX, deltaY);
 		// move(event);
-		ws.selected = ws.underCursor();
+		if (this.willAutoBind) {
+			ws.activeBindings = this.checkForBindings();
+		} else {
+			ws.activeBindings = [];
+		}
 		ws.drawScreen();
 	}
 
@@ -121,7 +130,100 @@ class MoveMode implements Mode {
 		ws.selected = ws.underCursor();
 		ws.drawScreen();
 	}
+
+	checkForBindings() {
+		function pairBindings(list: Binding[]) {
+			const pairedBindings: Map<string, { x: Binding | null; y: Binding | null }> = new Map();
+			for (let i = 0; i < list.length; i++) {
+				const namespace = list[i].name.slice(0, -2);
+				const pair = pairedBindings.get(namespace);
+				if (pair === undefined) {
+					if (list[i].name.slice(-2) === '/x') {
+						pairedBindings.set(namespace, {
+							x: list[i],
+							y: null
+						});
+					} else if (list[i].name.slice(-2) === '/y') {
+						pairedBindings.set(namespace, {
+							x: null,
+							y: list[i]
+						});
+					}
+				} else if (list[i].name.slice(-2) === '/x') {
+					pair.x = list[i];
+					pairedBindings.set(namespace, pair);
+				} else if (list[i].name.slice(-2) === '/y') {
+					pair.y = list[i];
+					pairedBindings.set(namespace, pair);
+				}
+			}
+			return pairedBindings;
+		}
+		if (ws.selected === null) {
+			return [];
+		}
+		const availableBindings = ws.selected.bindings.filter(
+			(val) => val.settable && (val.name.slice(-2) === '/x' || val.name.slice(-2) === '/y')
+		);
+		const pairedSelfBindings = pairBindings(availableBindings);
+		const shape = ws.elements
+			.filter((val) => val !== ws.selected)
+			// get all shapes within 10units of the cursor
+			.sort((val1, val2) => {
+				return (
+					((wp.cursorX - val1.positionX.value) ** 2 + (wp.cursorY - val1.positionY.value) ** 2) **
+						0.5 -
+					((wp.cursorX - val2.positionX.value) ** 2 + (wp.cursorY - val2.positionY.value) ** 2) **
+						0.5
+				);
+			})
+			.at(0);
+		const otherBindings = shape?.bindings || [];
+		const otherPairs = pairBindings(otherBindings);
+		const pairs: { x: number; y: number }[] = [];
+		pairedSelfBindings.forEach((pair) => {
+			otherPairs.forEach((pair2) => {
+				if (
+					pair.x !== null &&
+					pair2.x !== null &&
+					pair.y !== null &&
+					pair2.y !== null &&
+					pair.x.getValue().type === STATIC_TYPES.INT &&
+					pair2.x.getValue().type === STATIC_TYPES.INT &&
+					pair.y.getValue().type === STATIC_TYPES.INT &&
+					pair2.y.getValue().type === STATIC_TYPES.INT &&
+					pair.x.getValue().value === pair2.x.getValue().value &&
+					pair.y.getValue().value === pair2.y.getValue().value
+				) {
+					console.log(
+						parseExpression(`(get @i${shape?.id} "${pair2.y.name}")`),
+						`(get @i${shape?.id} "${pair2.y.name}")`
+					);
+					pair.x.setValue(
+						(parseExpression(`(get @i${shape?.id} "${pair2.x.name}")`) as Value).value as Command
+					);
+					pair.y.setValue(
+						(parseExpression(`(get @i${shape?.id} "${pair2.y.name}")`) as Value).value as Command
+					);
+					console.log(
+						pair.x?.name,
+						pair2.x?.name,
+						pair.x?.getValue(),
+						pair2.x?.getValue(),
+						pair.y?.getValue(),
+						pair2.y?.getValue()
+					);
+					pairs.push({
+						x: pair.x.getValue().value as number,
+						y: pair.y.getValue().value as number
+					});
+				}
+			});
+		});
+		return pairs;
+	}
 }
+
 // class DrawMode implements Mode {
 // 	input(key: string, shiftKey: boolean) {}
 // }
@@ -143,6 +245,7 @@ class EditMode implements Mode {
 		} else if (ws.selected !== null && !ws.selected.input(wp.cursorX, wp.cursorY, event)) {
 			move(event);
 		}
+		ws.activeBindings = [];
 		ws.drawScreen();
 	}
 
@@ -211,6 +314,7 @@ class CommandMode implements Mode {
 			this.currentCommand += event.key;
 			this.options = getNextParameters(this.currentCommand);
 		}
+		ws.activeBindings = [];
 		ws.drawScreen();
 	}
 

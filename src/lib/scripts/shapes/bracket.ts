@@ -2,7 +2,14 @@
 import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
-import { BindableInt, STATIC_TYPES, Value } from '../dataType';
+import {
+	BindableInt,
+	STATIC_TYPES,
+	Value,
+	type SerializedBindable,
+	type BindingList,
+	Binding
+} from '../dataType';
 import { keymap } from '../keymap';
 import { Shape, Side, type SerializedShape, type Bindings } from './shape';
 
@@ -20,53 +27,63 @@ export default class Bracket implements Shape {
 	shouldRemove = false;
 	readonly id: string;
 
-	bindings: Bindings = {
-		'midpoint/x': {
-			propertyName: 'midpointX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/y': {
-			propertyName: 'midpointY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'top/x': {
-			propertyName: 'topX',
-			gettable: false,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'top/y': {
-			propertyName: 'topY',
-			gettable: false,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'bottom/x': {
-			propertyName: 'bottomX',
-			gettable: false,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'bottom/y': {
-			propertyName: 'bottomY',
-			gettable: false,
-			settable: true,
-			type: STATIC_TYPES.INT
-		}
-	};
+	bindings: BindingList = [
+		new Binding(
+			'position/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.positionX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.positionX.bind(val);
+			}
+		),
+		new Binding(
+			'position/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.positionY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.positionY.bind(val);
+			}
+		),
+		new Binding(
+			'midpoint/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.positionX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.positionX.bind(val);
+			}
+		),
+		new Binding('midpoint/y', STATIC_TYPES.INT, () => {
+			return new Value(
+				Math.floor((this.positionY.value + this.height.value) / 2),
+				STATIC_TYPES.INT
+			);
+		}),
+		new Binding(
+			'size/height',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.height.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.height.bind(val);
+			}
+		)
+	];
 
 	style: BracketType = BracketType.CURLY;
 	side: Side = Side.LEFT;
 
-	constructor(positionX: number, positionY: number, height: number, id: string) {
-		this.positionX = new BindableInt(positionX);
-		this.positionY = new BindableInt(positionY);
+	constructor(positionX: BindableInt, positionY: BindableInt, height: BindableInt, id: string) {
+		this.positionX = positionX;
+		this.positionY = positionY;
 		this.width = new BindableInt(1);
-		this.height = new BindableInt(height);
+		this.height = height;
 
 		this.id = id;
 	}
@@ -219,38 +236,23 @@ export default class Bracket implements Shape {
 		);
 	}
 
-	getBinding(name: string): Value {
-		const propertyName = this.bindings[name]['propertyName'] as keyof Bracket;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		return new Value((this[propertyName] as BindableInt).value, this.bindings[name]['type']);
-	}
-
-	setBinding(name: string, command: Command): void {
-		const propertyName = this.bindings[name]['propertyName'] as keyof Bracket;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		(this[propertyName] as BindableInt).bind(command);
-	}
-
-	static serialize(input: Bracket): string {
-		return JSON.stringify({
+	static serialize(input: Bracket): SerializedShape {
+		return {
 			_type: 'Bracket',
-			positionX: input.positionX,
-			positionY: input.positionY,
-			height: input.height.value,
+			id: input.id,
+			positionX: input.positionX.serialize(),
+			positionY: input.positionY.serialize(),
+			height: input.height.serialize(),
 			style: input.style,
 			side: input.side
-		});
+		};
 	}
 	static deserialize(input: SerializedShape): Bracket | null {
 		if (input['_type'] === 'Bracket') {
 			const bracket = new Bracket(
-				input['positionX'] as number,
-				input['positionY'] as number,
-				input['height'] as number,
+				BindableInt.deserialize(input['positionX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['positionY'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['height'] as SerializedBindable<number>),
 				input['id'] as string
 			);
 			bracket.style = input['style'] as BracketType;

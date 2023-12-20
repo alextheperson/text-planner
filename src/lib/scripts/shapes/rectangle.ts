@@ -1,112 +1,105 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
-import { STATIC_TYPES } from '../dataType';
-import type { Bindings, SerializedShape, Shape } from './shape';
+import {
+	BindableInt,
+	STATIC_TYPES,
+	type BindingList,
+	type SerializedBindable,
+	Binding,
+	Value
+} from '../dataType';
+import type { SerializedShape, Shape } from './shape';
 import { FRAME_CHARS } from './shape';
 import { TwoPointShape } from './twoPointShape';
 
 export class Rectangle extends TwoPointShape implements Shape {
-	readonly bindings: Bindings = {
-		'corners/topLeft/x': {
-			propertyName: 'topLeftCornerX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'corners/topLeft/y': {
-			propertyName: 'topLeftCornerY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'corners/topRight/x': {
-			propertyName: 'topLeftCornerX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'corners/topRight/y': {
-			propertyName: 'topLeftCornerY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'corners/bottomLeft/x': {
-			propertyName: 'topLeftCornerX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'corners/bottomLeft/y': {
-			propertyName: 'topLeftCornerY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'corners/bottomRight/x': {
-			propertyName: 'topLeftCornerX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'corners/bottomRight/y': {
-			propertyName: 'topLeftCornerY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/top/x': {
-			propertyName: 'topMidpointX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/top/y': {
-			propertyName: 'topMidpointY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/bottom/x': {
-			propertyName: 'bottomMidpointX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/bottom/y': {
-			propertyName: 'bottomMidpointY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/left/x': {
-			propertyName: 'leftMidpointX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/left/y': {
-			propertyName: 'leftMidpointY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/right/x': {
-			propertyName: 'rightMidpointX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/right/y': {
-			propertyName: 'rightMidpointY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		}
-	};
+	readonly bindings: BindingList = [
+		new Binding(
+			'corners/topLeft/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.startX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.startX.bind(val);
+			}
+		),
+		new Binding(
+			'corners/topLeft/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.startY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.startY.bind(val);
+			}
+		),
+		new Binding('corners/topRight/x', STATIC_TYPES.INT, () => {
+			return new Value(this.endX.value, STATIC_TYPES.INT);
+		}),
+		new Binding('corners/topRight/y', STATIC_TYPES.INT, () => {
+			return new Value(this.startY.value, STATIC_TYPES.INT);
+		}),
+		new Binding('corners/bottomLeft/x', STATIC_TYPES.INT, () => {
+			return new Value(this.startX.value, STATIC_TYPES.INT);
+		}),
+		new Binding('corners/bottomLeft/y', STATIC_TYPES.INT, () => {
+			return new Value(this.endY.value, STATIC_TYPES.INT);
+		}),
+		new Binding(
+			'corners/bottomRight/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.endX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.endX.bind(val);
+			}
+		),
+		new Binding(
+			'corners/bottomRight/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.endY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.endY.bind(val);
+			}
+		),
+		new Binding('midpoint/top/x', STATIC_TYPES.INT, () => {
+			return new Value(Math.floor((this.startX.value + this.endX.value) / 2), STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/top/y', STATIC_TYPES.INT, () => {
+			return new Value(this.startY.value - 1, STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/bottom/x', STATIC_TYPES.INT, () => {
+			return new Value(Math.floor((this.startX.value + this.endX.value) / 2), STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/bottom/y', STATIC_TYPES.INT, () => {
+			return new Value(this.endY.value + 1, STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/left/x', STATIC_TYPES.INT, () => {
+			return new Value(this.startX.value - 1, STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/left/y', STATIC_TYPES.INT, () => {
+			return new Value(Math.floor((this.startY.value + this.endY.value) / 2), STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/right/x', STATIC_TYPES.INT, () => {
+			return new Value(this.endX.value + 1, STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/right/y', STATIC_TYPES.INT, () => {
+			return new Value(Math.floor((this.startY.value + this.endY.value) / 2), STATIC_TYPES.INT);
+		})
+	];
 
-	constructor(startX: number, startY: number, endX: number, endY: number, id: string) {
+	constructor(
+		startX: BindableInt,
+		startY: BindableInt,
+		endX: BindableInt,
+		endY: BindableInt,
+		id: string
+	) {
 		super(startX, startY, endX, endY, id);
 	}
 
@@ -200,74 +193,98 @@ export class Rectangle extends TwoPointShape implements Shape {
 		);
 	}
 
-	get topLeftCornerX(): number {
-		return this.positionX.value;
+	get topLeftCornerX(): BindableInt {
+		return this.startX;
 	}
-	get topLeftCornerY(): number {
-		return this.positionY.value;
+	set topLeftCornerX(val: number) {
+		this.startX.value = val + 1;
 	}
-	get topRightCornerX(): number {
-		return this.positionX.value + this.width.value;
+	get topLeftCornerY(): BindableInt {
+		return this.startY;
 	}
-	get topRightCornerY(): number {
-		return this.positionY.value + this.height.value;
+	set topLeftCornerY(val: number) {
+		this.startY.value = val + 1;
 	}
-	get bottomLeftCornerX(): number {
-		return this.positionX.value;
+	get topRightCornerX(): BindableInt {
+		return new BindableInt(this.positionX.value + this.width.value);
 	}
-	get bottomLeftCornerY(): number {
-		return this.positionY.value + this.height.value;
+	// set topRightCornerX(val: number) {
+	// 	return this.positionX.value + this.width.value;
+	// }
+	get topRightCornerY(): BindableInt {
+		return new BindableInt(this.positionY.value + this.height.value);
 	}
-	get bottomRightCornerX(): number {
-		return this.positionX.value + this.width.value;
+	// set topRightCornerY(val: number) {
+	// 	return this.positionY.value + this.height.value;
+	// }
+	get bottomLeftCornerX(): BindableInt {
+		return new BindableInt(this.positionX.value);
 	}
-	get bottomRightCornerY(): number {
-		return this.positionY.value + this.height.value;
+	// set bottomLeftCornerX(val: number) {
+	// 	return this.positionX.value;
+	// }
+	get bottomLeftCornerY(): BindableInt {
+		return new BindableInt(this.positionY.value + this.height.value);
+	}
+	// set bottomLeftCornerY(val: number) {
+	// 	return this.positionY.value + this.height.value;
+	// }
+	get bottomRightCornerX(): BindableInt {
+		return this.endX;
+	}
+	set bottomRightCornerX(val: number) {
+		this.endY.value = val;
+	}
+	get bottomRightCornerY(): BindableInt {
+		return this.endY;
+	}
+	set bottomRightCornerY(val: number) {
+		this.endY.value = val;
 	}
 
-	get topMidpointX(): number {
-		return this.positionX.value + Math.floor(this.width.value / 2);
+	get topMidpointX(): BindableInt {
+		return new BindableInt(this.positionX.value + Math.floor(this.width.value / 2));
 	}
-	get topMidpointY(): number {
-		return this.positionY.value;
+	get topMidpointY(): BindableInt {
+		return new BindableInt(this.positionY.value - 1);
 	}
-	get bottomMidpointX(): number {
-		return this.positionX.value + Math.floor(this.width.value / 2);
+	get bottomMidpointX(): BindableInt {
+		return new BindableInt(this.positionX.value + Math.floor(this.width.value / 2));
 	}
-	get bottomMidpointY(): number {
-		return this.positionY.value + this.height.value;
+	get bottomMidpointY(): BindableInt {
+		return new BindableInt(this.positionY.value + this.height.value);
 	}
-	get leftMidpointX(): number {
-		return this.positionX.value;
+	get leftMidpointX(): BindableInt {
+		return new BindableInt(this.positionX.value - 1);
 	}
-	get leftMidpointY(): number {
-		return this.positionY.value + Math.floor(this.height.value / 2);
+	get leftMidpointY(): BindableInt {
+		return new BindableInt(this.positionY.value + Math.floor(this.height.value / 2));
 	}
-	get rightMidpointX(): number {
-		return this.positionX.value + this.width.value;
+	get rightMidpointX(): BindableInt {
+		return new BindableInt(this.positionX.value + this.width.value);
 	}
-	get rightMidpointY(): number {
-		return this.positionY.value + Math.floor(this.height.value / 2);
+	get rightMidpointY(): BindableInt {
+		return new BindableInt(this.positionY.value + Math.floor(this.height.value / 2));
 	}
 
 	static serialize(input: Rectangle): SerializedShape {
 		return {
 			_type: 'Rectangle',
 			id: input.id,
-			startX: input.startX.value,
-			startY: input.startY.value,
-			endX: input.endX.value,
-			endY: input.endY.value
+			startX: input.startX.serialize(),
+			startY: input.startY.serialize(),
+			endX: input.endX.serialize(),
+			endY: input.endY.serialize()
 		};
 	}
 
 	static deserialize(input: SerializedShape): Rectangle | null {
 		if (input['_type'] === 'Rectangle') {
 			return new Rectangle(
-				input['startX'] as number,
-				input['startY'] as number,
-				input['endX'] as number,
-				input['endY'] as number,
+				BindableInt.deserialize(input['startX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['startY'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endY'] as SerializedBindable<number>),
 				input['id'] as string
 			);
 		}

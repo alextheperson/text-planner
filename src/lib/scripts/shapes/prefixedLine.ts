@@ -2,7 +2,15 @@
 import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
-import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
+import {
+	BindableInt,
+	BindableString,
+	STATIC_TYPES,
+	Value,
+	type SerializedBindable,
+	type BindingList,
+	Binding
+} from '../dataType';
 import { keymap } from '../keymap';
 import type { Bindings, SerializedShape, Shape } from './shape';
 
@@ -16,52 +24,82 @@ export class PrefixedLine implements Shape {
 	content: BindableString;
 	readonly id: string;
 
-	bindings: Bindings = {
-		'position/x': {
-			propertyName: 'positionX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'position/y': {
-			propertyName: 'positionY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		width: {
-			propertyName: 'width',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		height: {
-			propertyName: 'height',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'content/prefix': {
-			propertyName: 'prefix',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.STRING
-		},
-		'content/body': {
-			propertyName: 'content',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.STRING
-		}
-	};
+	bindings: BindingList = [
+		new Binding(
+			'position/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.positionX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.positionX.bind(val);
+			}
+		),
+		new Binding(
+			'position/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.positionY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.positionY.bind(val);
+			}
+		),
+		new Binding(
+			'size/width',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.width.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.width.bind(val);
+			}
+		),
+		new Binding(
+			'size/height',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.height.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.height.bind(val);
+			}
+		),
+		new Binding(
+			'content/prefix',
+			STATIC_TYPES.STRING,
+			() => {
+				return new Value(this.prefix.value, STATIC_TYPES.STRING);
+			},
+			(val) => {
+				this.prefix.bind(val);
+			}
+		),
+		new Binding(
+			'content/body',
+			STATIC_TYPES.STRING,
+			() => {
+				return new Value(this.content.value, STATIC_TYPES.STRING);
+			},
+			(val) => {
+				this.content.bind(val);
+			}
+		)
+	];
 
 	shouldRemove = false;
 
-	constructor(positionX: number, positionY: number, prefix: string, content: string, id: string) {
-		this.positionX = new BindableInt(positionX);
-		this.positionY = new BindableInt(positionY);
-		this.prefix = new BindableString(prefix);
-		this.content = new BindableString(content);
+	constructor(
+		positionX: BindableInt,
+		positionY: BindableInt,
+		prefix: BindableString,
+		content: BindableString,
+		id: string
+	) {
+		this.positionX = positionX;
+		this.positionY = positionY;
+		this.prefix = prefix;
+		this.content = content;
 
 		this.id = id;
 
@@ -178,40 +216,24 @@ export class PrefixedLine implements Shape {
 		return false;
 	}
 
-	getBinding(name: string): Value {
-		const propertyName = this.bindings[name]['propertyName'] as keyof PrefixedLine;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		return new Value((this[propertyName] as BindableInt).value, this.bindings[name]['type']);
-	}
-
-	setBinding(name: string, command: Command): void {
-		const propertyName = this.bindings[name]['propertyName'] as keyof PrefixedLine;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		(this[propertyName] as BindableInt).bind(command);
-	}
-
 	static serialize(input: PrefixedLine): SerializedShape {
 		return {
 			_type: 'PrefixedLine',
 			id: input.id,
-			positionX: input.positionX.value,
-			positionY: input.positionY.value,
-			prefix: input.prefix.value,
-			content: input.content.value
+			positionX: input.positionX.serialize(),
+			positionY: input.positionY.serialize(),
+			prefix: input.prefix.serialize(),
+			content: input.content.serialize()
 		};
 	}
 
 	static deserialize(input: SerializedShape): PrefixedLine | null {
 		if (input['_type'] === 'PrefixedLine') {
 			return new PrefixedLine(
-				input['positionX'] as number,
-				input['positionY'] as number,
-				input['prefix'] as string,
-				input['content'] as string,
+				BindableInt.deserialize(input['positionX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['positionY'] as SerializedBindable<number>),
+				BindableString.deserialize(input['prefix'] as SerializedBindable<string>),
+				BindableString.deserialize(input['content'] as SerializedBindable<string>),
 				input['id'] as string
 			);
 		}

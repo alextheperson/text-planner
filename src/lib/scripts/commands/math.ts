@@ -78,3 +78,9 @@ new CommandDefinition('mod')
 		STATIC_TYPES.FLOAT
 	)
 	.register();
+
+new CommandDefinition('floor')
+	.addOverride((params) => {
+		return new Value(Math.floor(params[0].value as number), STATIC_TYPES.INT);
+	}, STATIC_TYPES.FLOAT)
+	.register();

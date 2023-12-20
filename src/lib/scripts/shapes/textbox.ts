@@ -2,7 +2,16 @@
 import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
-import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
+import {
+	BindableInt,
+	BindableString,
+	STATIC_TYPES,
+	Value,
+	type SerializedBindable,
+	type DataType,
+	type BindingList,
+	Binding
+} from '../dataType';
 import { keymap } from '../keymap';
 import { workspace as ws } from '../workspace';
 import type { Bindings, SerializedShape, Shape } from './shape';
@@ -15,46 +24,53 @@ export class TextBox implements Shape {
 	shouldRemove = false;
 	readonly id: string;
 
-	readonly bindings: Bindings = {
-		'position/x': {
-			propertyName: 'positionX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'position/y': {
-			propertyName: 'positionY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'size/width': {
-			propertyName: 'width',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'size/height': {
-			propertyName: 'height',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		content: {
-			propertyName: 'content',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.STRING
-		}
-	};
+	readonly bindings: BindingList = [
+		new Binding(
+			'position/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.positionX.value, STATIC_TYPES.INT);
+			} //,
+			// (val) => {
+			// 	this.positionX.bind(val);
+			// }
+		),
+		new Binding(
+			'position/y',
+			STATIC_TYPES.INT,
+
+			() => {
+				return new Value(this.positionY.value, STATIC_TYPES.INT);
+			} //,
+			// (val) => {
+			// 	this.positionY.bind(val);
+			// }
+		),
+		new Binding('size/width', STATIC_TYPES.INT, () => {
+			return new Value(this.width.value, STATIC_TYPES.INT);
+		}),
+		new Binding('size/height', STATIC_TYPES.INT, () => {
+			return new Value(this.height.value, STATIC_TYPES.INT);
+		}),
+		new Binding(
+			'content',
+			STATIC_TYPES.STRING,
+			() => {
+				return new Value(this.content.value, STATIC_TYPES.STRING);
+			},
+			(val) => {
+				this.content.bind(val);
+			}
+		)
+	];
 
 	content: BindableString;
 	hasBorder = false;
 
-	constructor(positionX: number, positionY: number, content: string, id: string) {
-		this.positionX = new BindableInt(positionX);
-		this.positionY = new BindableInt(positionY);
-		this.content = new BindableString(content);
+	constructor(positionX: BindableInt, positionY: BindableInt, content: BindableString, id: string) {
+		this.positionX = positionX;
+		this.positionY = positionY;
+		this.content = content;
 
 		this.id = id;
 
@@ -143,11 +159,10 @@ export class TextBox implements Shape {
 		return buffer;
 	}
 
-	input(cursor: Vector2, event: KeyboardEvent) {
-		const positionInText = this.getIndex(wp.cursor.x, wp.cursor.y);
-		if (this.content !== '') {
+	input(cursorX: number, cursorY: number, event: KeyboardEvent) {
+		const positionInText = this.getIndex(wp.cursorX, wp.cursorY);
+		if (this.content.value !== '') {
 			this.shouldRemove = false;
-			// ModeManager.setMode(Modes.VIEW_MODE);
 		}
 		if (event.key == 'Backspace') {
 			this.deleteAt(positionInText);
@@ -164,7 +179,12 @@ export class TextBox implements Shape {
 				this.addCharAt(event.key, positionInText);
 			} else {
 				console.log('new textbox');
-				const newText = new TextBox(cursorX, cursorY, event.key, ws.getId());
+				const newText = new TextBox(
+					new BindableInt(cursorX),
+					new BindableInt(cursorY),
+					new BindableString(event.key),
+					ws.getId()
+				);
 				ws.elements.push(newText);
 				ws.selected = newText;
 				wp.moveCursor(1, 0);
@@ -214,28 +234,12 @@ export class TextBox implements Shape {
 		wp.moveCursor(deltaX, deltaY);
 	}
 
-	getBinding(name: string): Value {
-		const propertyName = this.bindings[name]['propertyName'] as keyof TextBox;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		return new Value((this[propertyName] as BindableInt).value, this.bindings[name]['type']);
-	}
-
-	setBinding(name: string, command: Command): void {
-		const propertyName = this.bindings[name]['propertyName'] as keyof TextBox;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		(this[propertyName] as BindableInt).bind(command);
-	}
-
 	static serialize(input: TextBox): SerializedShape {
 		return {
 			_type: 'TextBox',
-			positionX: input.positionX.value,
-			positionY: input.positionY.value,
-			content: input.content.value,
+			positionX: input.positionX.serialize(),
+			positionY: input.positionY.serialize(),
+			content: input.content.serialize(),
 			id: input.id
 		};
 	}
@@ -243,9 +247,9 @@ export class TextBox implements Shape {
 	static deserialize(input: SerializedShape): TextBox | null {
 		if (input['_type'] === 'TextBox') {
 			return new TextBox(
-				input['positionX'] as number,
-				input['positionY'] as number,
-				input['content'] as string,
+				BindableInt.deserialize(input['positionX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['positionY'] as SerializedBindable<number>),
+				BindableString.deserialize(input['content'] as SerializedBindable<string>),
 				input['id'] as string
 			);
 		}

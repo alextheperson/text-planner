@@ -1,5 +1,5 @@
-import { CommandDefinition } from '../commands';
-import { STATIC_TYPES, Value } from '../dataType';
+import { Command, CommandDefinition, parseExpression } from '../commands';
+import { BindableInt, STATIC_TYPES, Value } from '../dataType';
 import { Rectangle } from '../shapes/rectangle';
 import type { Shape } from '../shapes/shape';
 import { TextBox } from '../shapes/textbox';
@@ -8,6 +8,7 @@ import { workspace as ws } from '../workspace';
 new CommandDefinition('del')
 	.addOverride((params) => {
 		(params[0].value as Shape).shouldRemove = true;
+		console.log(params[0].value);
 		ws.cullElements();
 		// `Deleted the ${elementName} at position (${elementPosition.x}, ${elementPosition.y})`
 
@@ -45,17 +46,60 @@ new CommandDefinition('border')
 	.addOverride((params) => {
 		const selected = params[0].value as Shape;
 		if (selected instanceof TextBox) {
-			ws.elements.push(
-				new Rectangle(
-					selected.position.x - 1,
-					selected.position.y - 1,
-					selected.position.x + selected.size.x,
-					selected.position.y + selected.size.y
-				)
+			const rect = new Rectangle(
+				new BindableInt(selected.positionX.value - 1),
+				new BindableInt(selected.positionY.value - 1),
+				new BindableInt(selected.positionX.value + selected.width.value),
+				new BindableInt(selected.positionY.value + selected.height.value),
+				ws.getId()
 			);
+
+			rect.bindings
+				.filter((val) => val.name === 'corners/topLeft/x')
+				.at(0)
+				?.setValue(
+					new Command(
+						'get',
+						[new Value(selected, STATIC_TYPES.SHAPE), new Value('position/x', STATIC_TYPES.STRING)],
+						`:get @i${selected.id} "position/x"`
+					)
+				);
+			rect.bindings
+				.filter((val) => val.name === 'corners/topLeft/y')
+				.at(0)
+				?.setValue(
+					new Command(
+						'get',
+						[new Value(selected, STATIC_TYPES.SHAPE), new Value('position/y', STATIC_TYPES.STRING)],
+						`:get @i${selected.id} "position/y"`
+					)
+				);
+			rect.bindings
+				.filter((val) => val.name === 'corners/bottomRight/x')
+				.at(0)
+				?.setValue(
+					parseExpression(
+						`(:floor (:add (:get @i${selected.id} "position/x") (:get @i${selected.id} "size/width")))`
+					) as Command
+				);
+			rect.bindings
+				.filter((val) => val.name === 'corners/bottomRight/y')
+				.at(0)
+				?.setValue(
+					parseExpression(
+						`(:floor (:add (:get @i${selected.id} "position/y") (:get @i${selected.id} "size/height")))`
+					) as Command
+				);
+			ws.elements.push(rect);
 			// `Put ${ws.selected.position.x + ws.selected.size.x}x${ws.selected.position.y + ws.selected.size.y} Rectangle around the selected TextBox`,
 		}
 		//CommandOutput(`No TextBox was selected`, OutputType.ERROR);
 		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.SHAPE)
+	.register();
+
+new CommandDefinition('id')
+	.addOverride((params) => {
+		return new Value((params[0].value as Shape).id, STATIC_TYPES.STRING);
 	}, STATIC_TYPES.SHAPE)
 	.register();

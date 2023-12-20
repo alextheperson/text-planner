@@ -1,49 +1,79 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Buffer from '../buffer';
-import { BindableBool, STATIC_TYPES } from '../dataType';
+import {
+	BindableBool,
+	BindableInt,
+	STATIC_TYPES,
+	type BindingList,
+	type SerializedBindable,
+	Binding,
+	Value,
+	BindableString
+} from '../dataType';
+import { workspace as ws } from '../workspace';
 import { Line } from './line';
 import type { Bindings, LineDirection, SerializedShape, Shape } from './shape';
+import { TextBox } from './textbox';
 
 export class Connector extends Line implements Shape {
-	bindings: Bindings = {
-		'start/x': {
-			propertyName: 'startX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'start/y': {
-			propertyName: 'startY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'end/x': {
-			propertyName: 'endX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'end/y': {
-			propertyName: 'endY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/x': {
-			propertyName: 'midpointX',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		},
-		'midpoint/y': {
-			propertyName: 'midpointY',
-			gettable: true,
-			settable: false,
-			type: STATIC_TYPES.INT
-		}
-	};
-	constructor(startX: number, startY: number, endX: number, endY: number, id: string) {
+	readonly bindings: BindingList = [
+		new Binding(
+			'start/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.startX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.startX.bind(val);
+			}
+		),
+		new Binding(
+			'start/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.startY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.startY.bind(val);
+			}
+		),
+		new Binding(
+			'end/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.endX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.endX.bind(val);
+			}
+		),
+		new Binding(
+			'end/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.endY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.endY.bind(val);
+			}
+		),
+		new Binding('midpoint/x', STATIC_TYPES.INT, () => {
+			return new Value(Math.floor((this.positionX.value + this.width.value) / 2), STATIC_TYPES.INT);
+		}),
+		new Binding('midpoint/y', STATIC_TYPES.INT, () => {
+			return new Value(
+				Math.floor((this.positionY.value + this.height.value) / 2),
+				STATIC_TYPES.INT
+			);
+		})
+	];
+	constructor(
+		startX: BindableInt,
+		startY: BindableInt,
+		endX: BindableInt,
+		endY: BindableInt,
+		id: string
+	) {
 		super(startX, startY, endX, endY, id);
 
 		console.log(startX, startY, endX, endY);
@@ -55,10 +85,10 @@ export class Connector extends Line implements Shape {
 
 		if (this.startX.value == this.endX.value || this.startY.value == this.endY.value) {
 			const line = new Line(
-				this.startX.value - this.positionX.value,
-				this.startY.value - this.positionY.value,
-				this.endX.value - this.positionX.value,
-				this.endY.value - this.positionY.value,
+				new BindableInt(this.startX.value - this.positionX.value),
+				new BindableInt(this.startY.value - this.positionY.value),
+				new BindableInt(this.endX.value - this.positionX.value),
+				new BindableInt(this.endY.value - this.positionY.value),
 				''
 			);
 			line.startArrow = this.startArrow;
@@ -70,10 +100,10 @@ export class Connector extends Line implements Shape {
 			const midPointY = Math.floor(this.height.value / 2);
 
 			const startLine = new Line(
-				this.startX.value - this.positionX.value,
-				this.startY.value - this.positionY.value,
-				midPointX,
-				midPointY,
+				new BindableInt(this.startX.value - this.positionX.value),
+				new BindableInt(this.startY.value - this.positionY.value),
+				new BindableInt(midPointX),
+				new BindableInt(midPointY),
 				''
 			);
 			startLine.startArrow = this.startArrow;
@@ -85,10 +115,10 @@ export class Connector extends Line implements Shape {
 			);
 
 			const endLine = new Line(
-				midPointX,
-				midPointY,
-				this.endX.value - this.positionX.value,
-				this.endY.value - this.positionY.value,
+				new BindableInt(midPointX),
+				new BindableInt(midPointY),
+				new BindableInt(this.endX.value - this.positionX.value),
+				new BindableInt(this.endY.value - this.positionY.value),
 				''
 			);
 			endLine.endArrow = this.endArrow;
@@ -98,6 +128,17 @@ export class Connector extends Line implements Shape {
 				this.startX.value > this.endX.value ? 0 : midPointX,
 				this.startY.value > this.endY.value ? 0 : midPointY,
 				endLine.render(className)
+			);
+
+			buffer.composite(
+				midPointX,
+				midPointY,
+				new TextBox(
+					new BindableInt(0),
+					new BindableInt(0),
+					new BindableString('•'),
+					ws.getId()
+				).render('')
 			);
 		}
 
@@ -112,10 +153,10 @@ export class Connector extends Line implements Shape {
 
 		if (this.startX.value == this.endX.value || this.startY.value == this.endY.value) {
 			const line = new Line(
-				this.startX.value - this.positionX.value,
-				this.startY.value - this.positionY.value,
-				this.endX.value - this.positionX.value,
-				this.endY.value - this.positionY.value,
+				new BindableInt(this.startX.value - this.positionX.value),
+				new BindableInt(this.startY.value - this.positionY.value),
+				new BindableInt(this.endX.value - this.positionX.value),
+				new BindableInt(this.endY.value - this.positionY.value),
 				''
 			);
 			line.startArrow = this.startArrow;
@@ -127,20 +168,20 @@ export class Connector extends Line implements Shape {
 			const midPointY = Math.floor(this.height.value / 2);
 
 			const startLine = new Line(
-				this.startX.value - this.positionX.value,
-				this.startY.value - this.positionY.value,
-				midPointX,
-				midPointY,
+				new BindableInt(this.startX.value - this.positionX.value),
+				new BindableInt(this.startY.value - this.positionY.value),
+				new BindableInt(midPointX),
+				new BindableInt(midPointY),
 				''
 			);
 			startLine.startArrow = this.startArrow;
 			startLine.direction = this.direction;
 
 			const endLine = new Line(
-				midPointX,
-				midPointY,
-				this.endX.value - this.positionX.value,
-				this.endY.value - this.positionY.value,
+				new BindableInt(midPointX),
+				new BindableInt(midPointY),
+				new BindableInt(this.endX.value - this.positionX.value),
+				new BindableInt(this.endY.value - this.positionY.value),
 				''
 			);
 			endLine.endArrow = this.endArrow;
@@ -166,12 +207,12 @@ export class Connector extends Line implements Shape {
 		return {
 			_type: 'Connector',
 			id: input.id,
-			startX: input.startX.value,
-			startY: input.startY.value,
-			endX: input.endX.value,
-			endY: input.endY.value,
-			startArrow: input.startArrow.value,
-			endArrow: input.endArrow.value,
+			startX: input.startX.serialize(),
+			startY: input.startY.serialize(),
+			endX: input.endX.serialize(),
+			endY: input.endY.serialize(),
+			startArrow: input.startArrow.serialize(),
+			endArrow: input.endArrow.serialize(),
 			direction: input.direction
 		};
 	}
@@ -179,14 +220,18 @@ export class Connector extends Line implements Shape {
 	static deserialize(input: SerializedShape): Connector | null {
 		if (input['_type'] === 'Connector') {
 			const connector = new Connector(
-				input['startX'] as number,
-				input['startY'] as number,
-				input['endX'] as number,
-				input['endY'] as number,
+				BindableInt.deserialize(input['startX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['startY'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endY'] as SerializedBindable<number>),
 				input['id'] as string
 			);
-			connector.startArrow = new BindableBool(input['startArrow'] as boolean);
-			connector.endArrow = new BindableBool(input['endArrow'] as boolean);
+			connector.startArrow = BindableBool.deserialize(
+				input['startArrow'] as SerializedBindable<boolean>
+			);
+			connector.endArrow = BindableBool.deserialize(
+				input['endArrow'] as SerializedBindable<boolean>
+			);
 			connector.direction = input['direction'] as LineDirection;
 			return connector;
 		}

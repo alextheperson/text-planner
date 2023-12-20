@@ -4,7 +4,7 @@ import { Button } from '../shapes/button';
 import { Bookmark } from '../shapes/bookmark';
 import { wp } from '$lib/components/stores';
 import { Command, CommandDefinition, CommandOutput, OUTPUT_TYPE } from '../commands';
-import { STATIC_TYPES, Value } from '../dataType';
+import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
 
 console.log('registered');
 
@@ -81,20 +81,51 @@ new CommandDefinition('ls')
 		let height = 0;
 		const drawFiles = function (tree: _FolderTree, indentation: number) {
 			const keys = Object.keys(tree);
+			let maxLength = 0;
+			keys.forEach((val) => {
+				if (val.length > maxLength) {
+					maxLength = val.length;
+				}
+			});
 			for (let k = 0; k < keys.length; k++) {
 				if (typeof tree[keys[k]] == 'string') {
 					ws.elements.push(
 						new Button(
-							indentation,
-							height,
-							new Command('load', [new Value(tree[keys[k]] as string, STATIC_TYPES.STRING)]),
-							keys[k],
-							`f-${tree[keys[k]]}`
+							new BindableInt(indentation),
+							new BindableInt(height),
+							new Command(
+								'load',
+								[new Value(tree[keys[k]] as string, STATIC_TYPES.STRING)],
+								`load ${tree[keys[k]]}`
+							),
+							new BindableString(keys[k]),
+							`f-${tree[keys[k]]}-load`
+						),
+						new Button(
+							new BindableInt(indentation + maxLength + 3),
+							new BindableInt(height),
+							new Command(
+								'del',
+								[
+									new Value('file', STATIC_TYPES.STRING),
+									new Value(tree[keys[k]] as string, STATIC_TYPES.STRING)
+								],
+								`:del file ${tree[keys[k]]}`
+							),
+							new BindableString('delete'),
+							`f-${tree[keys[k]]}-delete`
 						)
 					);
 					height += 1;
 				} else {
-					ws.elements.push(new Bookmark(indentation, height, `/${keys[k]}/`, `b-${keys[k]}`));
+					ws.elements.push(
+						new Bookmark(
+							new BindableInt(indentation),
+							new BindableInt(height),
+							new BindableString(`/${keys[k]}/`),
+							`b-${keys[k]}`
+						)
+					);
 					height += 1;
 					drawFiles(tree[keys[k]] as _FolderTree, indentation + 2);
 				}

@@ -2,7 +2,15 @@
 import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
-import { BindableInt, STATIC_TYPES, Value, type BindableValue } from '../dataType';
+import {
+	BindableInt,
+	STATIC_TYPES,
+	Value,
+	type BindableValue,
+	type SerializedBindable,
+	Binding,
+	type BindingList
+} from '../dataType';
 import type { Bindings, SerializedShape, Shape } from './shape';
 
 export class TwoPointShape implements Shape {
@@ -14,43 +22,65 @@ export class TwoPointShape implements Shape {
 	shouldRemove = false;
 	readonly id: string;
 
-	readonly bindings: Bindings = {
-		'start/x': {
-			propertyName: 'startX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'start/y': {
-			propertyName: 'startY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'end/x': {
-			propertyName: 'endX',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		},
-		'end/y': {
-			propertyName: 'endY',
-			gettable: true,
-			settable: true,
-			type: STATIC_TYPES.INT
-		}
-	};
+	readonly bindings: BindingList = [
+		new Binding(
+			'start/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.startX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.startX.bind(val);
+			}
+		),
+		new Binding(
+			'start/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.startY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.startY.bind(val);
+			}
+		),
+		new Binding(
+			'end/x',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.endX.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.endX.bind(val);
+			}
+		),
+		new Binding(
+			'end/y',
+			STATIC_TYPES.INT,
+			() => {
+				return new Value(this.endY.value, STATIC_TYPES.INT);
+			},
+			(val) => {
+				this.endY.bind(val);
+			}
+		)
+	];
 
 	startX: BindableInt;
 	startY: BindableInt;
 	endX: BindableInt;
 	endY: BindableInt;
 
-	constructor(startX: number, startY: number, endX: number, endY: number, id: string) {
-		this.startX = new BindableInt(startX);
-		this.startY = new BindableInt(startY);
-		this.endX = new BindableInt(endX);
-		this.endY = new BindableInt(endY);
+	constructor(
+		startX: BindableInt,
+		startY: BindableInt,
+		endX: BindableInt,
+		endY: BindableInt,
+		id: string
+	) {
+		this.startX = startX;
+		this.startY = startY;
+		this.endX = endX;
+		this.endY = endY;
 
 		this.id = id;
 
@@ -66,17 +96,17 @@ export class TwoPointShape implements Shape {
 	}
 
 	move(cursorX: number, cursorY: number, deltaX: number, deltaY: number) {
-		if (cursorX !== this.startX.value || cursorY !== this.startY.value) {
-			this.startX.value += deltaX;
-			this.startY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
-		}
-		if (cursorX !== this.endX.value || cursorY !== this.endY.value) {
+		const moveEnd = cursorX !== this.startX.value || cursorY !== this.startY.value;
+		const moveStart = cursorX !== this.endX.value || cursorY !== this.endY.value;
+		if (moveEnd) {
 			this.endX.value += deltaX;
 			this.endY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
 		}
-
+		if (moveStart) {
+			this.startX.value += deltaX;
+			this.startY.value += deltaY;
+		}
+		wp.moveCursor(deltaX, deltaY);
 		this.updateDimensions();
 	}
 
@@ -107,40 +137,24 @@ export class TwoPointShape implements Shape {
 		return false;
 	}
 
-	getBinding(name: string): Value {
-		const propertyName = this.bindings[name]['propertyName'] as keyof TwoPointShape;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		return new Value((this[propertyName] as BindableInt).value, this.bindings[name]['type']);
-	}
-
-	setBinding(name: string, command: Command): void {
-		const propertyName = this.bindings[name]['propertyName'] as keyof TwoPointShape;
-		if (propertyName === undefined) {
-			throw new Error(`This item does not have a binding called '${name}'`);
-		}
-		(this[propertyName] as BindableInt).bind(command);
-	}
-
 	static serialize(input: TwoPointShape): SerializedShape {
 		return {
 			_type: 'TwoPointShape',
 			id: input.id,
-			startX: input.startX.value,
-			startY: input.startY.value,
-			endX: input.endX.value,
-			endY: input.endY.value
+			startX: input.startX.serialize(),
+			startY: input.startY.serialize(),
+			endX: input.endX.serialize(),
+			endY: input.endY.serialize()
 		};
 	}
 
 	static deserialize(input: SerializedShape): TwoPointShape | null {
 		if (input['_type'] === 'TwoPointShape') {
 			return new TwoPointShape(
-				input['startX'] as number,
-				input['startY'] as number,
-				input['endX'] as number,
-				input['endY'] as number,
+				BindableInt.deserialize(input['startX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['startY'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endY'] as SerializedBindable<number>),
 				input['id'] as string
 			);
 		}

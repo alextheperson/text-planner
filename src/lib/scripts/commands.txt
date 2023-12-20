@@ -14,12 +14,11 @@ int:
 float:
   ###.###
 
-TODO:
 boolean: (does conflict with implicit strings)
   true
   false
 
-shape: TODO:
+shape:
   @###,### (by coordinate)
   @c (under cursor)
   @### (by index)
@@ -27,10 +26,10 @@ shape: TODO:
 
 command:
   :??? ??? ??? (Execute command in root level)
-  (??? ??? ???) (Pass command to execute) TODO:
+  (??? ??? ???) (Pass command to execute)
   (:??? ??? ???) (Execute command and pass the result)
 
-shape bindings: TODO:
+shape bindings:
   position
     x: int
     y: int
@@ -38,8 +37,15 @@ shape bindings: TODO:
     height: int
     width: int
   
-  create bindings: TODO:
+  create bindings:
           shape   binding name command
     :bind <SHAPE> <STRING>     <COMMAND>
          shape   binding name
     :get <SHAPE> <STRING>
+
+
+:bind @i1 "end/x" (get @i0 "midpoint/left/x")
+:bind @i1 "end/y" (get @i0 "midpoint/left/y")
+
+:bind @i1 "start/x" (get @i2 "midpoint/right/x")
+:bind @i1 "start/y" (get @i2 "midpoint/right/y")

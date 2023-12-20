@@ -1,26 +1,58 @@
+import { wp } from '$lib/components/stores';
 import { STATIC_TYPES, Value, type DataType } from './dataType';
+import { workspace as ws } from './workspace';
 
 export class Command {
 	name: string;
-	parameters: Value[];
+	parameters: (Value | Command)[];
 	pattern: CommandOverride;
-	constructor(name: string, parameters: Value[]) {
+	string: string;
+
+	constructor(name: string, parameters: (Value | Command)[], string: string) {
 		this.name = name;
 		this.parameters = parameters;
-		this.pattern = CommandRegistry.findCommand(this.name, ...this.parameters);
+		this.pattern = CommandRegistry.findCommand(
+			this.name,
+			...this.parameters.map((val) => {
+				if (val instanceof Command) {
+					return val.execute();
+				} else {
+					return val;
+				}
+			})
+		);
+		this.string = string;
 	}
 
-	execute() {
-		return this.pattern.implementation(this.parameters);
+	execute(): Value {
+		console.log('name:', this.name);
+		console.log('params: ', this.parameters);
+		return this.pattern.implementation(
+			this.parameters.map((val) => {
+				if (val instanceof Command) {
+					return val.execute();
+				} else {
+					return val;
+				}
+			})
+		);
+	}
+
+	serialize() {
+		return this.string;
+	}
+
+	static deserialize(input: string) {
+		return (parseExpression(input) as Value).value as Command;
 	}
 }
-export function parseExpression(expression: string): Value {
+export function parseExpression(expression: string): Value | Command {
 	function parseCommand(exp: string) {
 		const tokens = [];
 		let currentToken = '';
 		let inQuotes = false;
 		let parenthesisLayers = 0;
-		for (let i = 1; i < exp.length; i++) {
+		for (let i = 0; i < exp.length; i++) {
 			currentToken += exp[i];
 			if (exp[i] === '"' && exp[i - 1] !== '\\') {
 				inQuotes = !inQuotes;
@@ -37,30 +69,36 @@ export function parseExpression(expression: string): Value {
 			if ((exp[i] === ' ' && !inQuotes && parenthesisLayers === 0) || i === exp.length - 1) {
 				tokens.push(currentToken.trimEnd());
 				currentToken = '';
+				parenthesisLayers = 0;
 			}
 		}
 
 		console.log(tokens);
 
-		const command = new Command(
+		return new Command(
 			tokens[0],
-			tokens.slice(1).map((val) => parseExpression(val))
+			tokens.slice(1).map((val) => parseExpression(val)),
+			expression
 		);
-
-		return command;
 	}
 
 	let exp = expression;
 	if (exp.startsWith('(') && exp.endsWith(')')) {
 		exp = exp.slice(1, -1);
 		if (exp.match(/^:([a-z]+)( \S+)*$/)) {
-			return parseCommand(exp).execute();
+			return parseCommand(exp.slice(1));
 		} else {
 			return new Value(parseCommand(exp), STATIC_TYPES.COMMAND);
 		}
 	} else if (exp.match(/^:([a-z]+)( \S+)*$/)) {
 		// Match a command call
-		return parseCommand(exp).execute();
+		return parseCommand(exp.slice(1)).execute();
+	} else if (exp === 'true') {
+		// Match a float
+		return new Value(true, STATIC_TYPES.BOOLEAN);
+	} else if (exp === 'false') {
+		// Match a float
+		return new Value(false, STATIC_TYPES.BOOLEAN);
 	} else if (exp.match(/^".*"/)) {
 		// Match a string in quotes
 		return new Value(exp.slice(1, -1), STATIC_TYPES.STRING);
@@ -73,6 +111,41 @@ export function parseExpression(expression: string): Value {
 	} else if (exp.match(/^[0-9]+\.[0-9]*$/)) {
 		// Match a float
 		return new Value(parseFloat(exp), STATIC_TYPES.FLOAT);
+	} else if (exp === '@c') {
+		// Match the shape under the cursor
+		const shape = ws.elements.filter((val) => val.isOn(wp.cursorX, wp.cursorY)).at(0);
+		if (shape === undefined) {
+			throw new Error('There is no shape under the cursor');
+		}
+		return new Value(shape, STATIC_TYPES.SHAPE);
+	} else if (exp.match(/^@[0-9]+,[0-9]+$/)) {
+		// Match the shape that exists at that point
+		const coordinates = exp
+			.slice(1)
+			.split(',')
+			.map((val) => parseInt(val));
+		const shape = ws.elements.filter((val) => val.isOn(coordinates[0], coordinates[1])).at(0);
+		if (shape === undefined) {
+			throw new Error(`No shape exists at ${exp.slice(1).split(',')}`);
+		}
+		return new Value(shape, STATIC_TYPES.SHAPE);
+	} else if (exp.match(/^@[0-9]+$/)) {
+		// Match the shape with that index
+		if (parseInt(exp.slice(1)) > ws.elements.length) {
+			throw new Error(
+				`There is no shape at index ${parseInt(exp.slice(1))}. There are only ${
+					ws.elements.length
+				} shapes(s)`
+			);
+		}
+		return new Value(ws.elements[parseInt(exp.slice(1))], STATIC_TYPES.SHAPE);
+	} else if (exp.match(/^@i[a-zA-Z0-9-]+$/)) {
+		// Match the shape wth that id
+		const shape = ws.elements.filter((val) => val.id === exp.slice(2)).at(0);
+		if (shape === undefined) {
+			throw new Error(`There is no shape with the id '${exp.slice(2)}'`);
+		}
+		return new Value(shape, STATIC_TYPES.SHAPE);
 	}
 	throw SyntaxError(`'${expression}' is not valid`);
 }
@@ -137,13 +210,12 @@ export class CommandRegistry {
 				if (!(pattern[i] as Array<string>).includes(params[i].value as string)) {
 					return false;
 				}
-			} else {
-				if (
-					pattern[i] !== params[i].type &&
-					!(pattern[i] === STATIC_TYPES.FLOAT && params[i].type === STATIC_TYPES.INT)
-				) {
-					return false;
-				}
+			} else if (
+				pattern[i] !== params[i].type &&
+				!(pattern[i] === STATIC_TYPES.FLOAT && params[i].type === STATIC_TYPES.INT) &&
+				pattern[i] !== STATIC_TYPES.ANY
+			) {
+				return false;
 			}
 		}
 
@@ -202,17 +274,21 @@ export function getNextParameters(start: string): string[] {
 			}
 		});
 	} else {
-		const lastToken = tokens.at(-1);
-		const patterns = CommandRegistry.getPatterns(tokens[0]);
+		try {
+			const lastToken = tokens.at(-1);
+			const patterns = CommandRegistry.getPatterns(tokens[0]);
 
-		for (let i = 0; i < (patterns?.length ?? 0); i++) {
-			if (patterns !== undefined && patterns[i].pattern[tokens.length - 2] instanceof Array) {
-				possibilities = possibilities.concat(
-					(patterns[i].pattern[tokens.length - 2] as Array<string>).filter((val) => {
-						return val.startsWith(lastToken ?? '') && !possibilities.includes(val);
-					})
-				);
+			for (let i = 0; i < (patterns?.length ?? 0); i++) {
+				if (patterns !== undefined && patterns[i].pattern[tokens.length - 2] instanceof Array) {
+					possibilities = possibilities.concat(
+						(patterns[i].pattern[tokens.length - 2] as Array<string>).filter((val) => {
+							return val.startsWith(lastToken ?? '') && !possibilities.includes(val);
+						})
+					);
+				}
 			}
+		} catch {
+			/* empty */
 		}
 	}
 

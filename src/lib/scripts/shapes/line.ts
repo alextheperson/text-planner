@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import Buffer from '../buffer';
-import { BindableBool, STATIC_TYPES } from '../dataType';
+import { BindableBool, BindableInt, STATIC_TYPES, type SerializedBindable } from '../dataType';
 import { keymap } from '../keymap';
 import type { Bindings, SerializedShape, Shape } from './shape';
 import { FRAME_CHARS, LineDirection } from './shape';
@@ -40,7 +40,13 @@ export class Line extends TwoPointShape implements Shape {
 	direction = LineDirection.X_FIRST;
 	shouldRemove = false;
 
-	constructor(startX: number, startY: number, endX: number, endY: number, id: string) {
+	constructor(
+		startX: BindableInt,
+		startY: BindableInt,
+		endX: BindableInt,
+		endY: BindableInt,
+		id: string
+	) {
 		super(startX, startY, endX, endY, id);
 	}
 
@@ -59,7 +65,6 @@ export class Line extends TwoPointShape implements Shape {
 	}
 
 	override render(className: string) {
-		console.log(this.startArrow, this.endArrow);
 		this.updateDimensions();
 		const buffer = new Buffer(this.width.value, this.height.value, '');
 
@@ -198,11 +203,11 @@ export class Line extends TwoPointShape implements Shape {
 		return {
 			_type: 'Line',
 			id: input.id,
-			startX: input.startX.value,
-			startY: input.startY.value,
-			endX: input.endX.value,
-			endY: input.endY.value,
-			endArrow: input.endArrow.value,
+			startX: input.startX.serialize(),
+			startY: input.startY.serialize(),
+			endX: input.endX.serialize(),
+			endY: input.endY.serialize(),
+			endArrow: input.endArrow.serialize(),
 			direction: input.direction
 		};
 	}
@@ -210,14 +215,16 @@ export class Line extends TwoPointShape implements Shape {
 	static deserialize(input: SerializedShape): Line | null {
 		if (input['_type'] === 'Line') {
 			const line = new Line(
-				input['startX'] as number,
-				input['startY'] as number,
-				input['endX'] as number,
-				input['endY'] as number,
+				BindableInt.deserialize(input['startX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['startY'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endX'] as SerializedBindable<number>),
+				BindableInt.deserialize(input['endY'] as SerializedBindable<number>),
 				input['id'] as string
 			);
-			line.startArrow.value = input['startArrow'] as boolean;
-			line.endArrow.value = input['endArrow'] as boolean;
+			line.startArrow = BindableBool.deserialize(
+				input['startArrow'] as SerializedBindable<boolean>
+			);
+			line.endArrow = BindableBool.deserialize(input['endArrow'] as SerializedBindable<boolean>);
 			line.direction = input['direction'] as LineDirection;
 			return line;
 		}

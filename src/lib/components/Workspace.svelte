@@ -8,6 +8,7 @@
 	let displayString: string;
 	let cursorX = 0;
 	let cursorY = 0;
+	let testCanvas: HTMLCanvasElement | undefined;
 
 	display.subscribe((value) => (displayString = value));
 
@@ -18,9 +19,8 @@
 
 	onMount(() => {
 		if (browser) {
-			let rect = document.getElementById('sizing')?.getBoundingClientRect();
-			wp.characterWidth = rect?.width ?? 1;
-			wp.characterHeight = rect?.height ?? 1;
+			wp.characterWidth = getTextWidth('M', '16px Fira Code');
+			wp.characterHeight = 20;
 			window.addEventListener('resize', setViewSize);
 		}
 		setViewSize();
@@ -53,6 +53,23 @@
 			keydown(event);
 		}
 	}
+
+	/**
+	 * Uses canvas.measureText to compute and return the width of the given text of given font in pixels.
+	 *
+	 * @param {String} text The text to be rendered.
+	 * @param {String} font The css font descriptor that text is to be rendered with (e.g. "bold 14px verdana").
+	 *
+	 * @see https://stackoverflow.com/questions/118241/calculate-text-width-with-javascript/21015393#21015393
+	 */
+	function getTextWidth(text: string, font: string) {
+		// re-use canvas object for better performance
+		const canvas = testCanvas || (testCanvas = document.createElement('canvas'));
+		const context = canvas.getContext('2d') as CanvasRenderingContext2D;
+		context.font = font;
+		const metrics = context.measureText(text);
+		return metrics.width;
+	}
 </script>
 
 <svelte:window on:click={click} on:keydown={keydown} on:paste={paste} />
@@ -67,7 +84,6 @@
 	style:transform="translate(-{wp.characterWidth / 2}px, -{wp.characterHeight / 2}px)"
 />
 <pre class="workspace">{@html displayString}</pre>
-<pre id="sizing">a</pre>
 
 <div
 	class="cursor"
@@ -78,11 +94,6 @@
 />
 
 <style lang="scss">
-	#sizing {
-		opacity: 0;
-		position: absolute;
-	}
-
 	.workspace {
 		position: absolute;
 		top: 0;
