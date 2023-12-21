@@ -1,7 +1,8 @@
 import { wp } from '$lib/components/stores';
-import { Command, getNextParameters, parseExpression } from './commands';
+import { Command, parseExpression } from './commands';
 import { STATIC_TYPES, type Binding, Value } from './dataType';
 import { keymap } from './keymap';
+import { UserConsole } from './userConsole';
 import { workspace as ws } from './workspace';
 
 const FAST_MOVE_SPEED = 5;
@@ -45,14 +46,25 @@ function move(event: KeyboardEvent) {
 }
 
 interface Mode {
-	keybindString: string;
 	input(event: KeyboardEvent): void;
 	click(event: MouseEvent): void;
+	open(): void;
+	close(): void;
 }
 
 class ViewMode implements Mode {
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${keymap.moveViewLeft[0]}], [${keymap.moveViewRight[0]}]: Move View. [${keymap.moveCursorUp[0]}], [${keymap.moveCursorDown[0]}], [${keymap.moveCursorLeft[0]}], [${keymap.moveCursorRight[0]}]: Move Cursor. [${keymap.select[0]}]: Move Object. [${keymap.editMode[0]}]: Edit. [${keymap.moveMode[0]}]: Move.`;
+	open() {
+		try {
+			ws.selected = ws.underCursor();
+			ws.drawScreen();
+		} catch {
+			/* empty */
+		}
+	}
 
+	close() {
+		/* empty */
+	}
 	input(event: KeyboardEvent) {
 		move(event);
 		if (keymap.select.includes(event.key) || keymap.editMode.includes(event.key)) {
@@ -82,10 +94,13 @@ class ViewMode implements Mode {
 
 class MoveMode implements Mode {
 	willAutoBind = true;
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${keymap.moveViewLeft[0]}], [${keymap.moveViewRight[0]}]: Move View. [${keymap.moveCursorUp[0]}], [${keymap.moveCursorDown[0]}], [${keymap.moveCursorLeft[0]}], [${keymap.moveCursorRight[0]}]: Move Object. [${keymap.viewMode[0]}]: View Mode.`;
 
-	constructor() {
+	open() {
 		ws.selected = ws.underCursor();
+	}
+
+	close(): void {
+		/* empty */
 	}
 
 	input(event: KeyboardEvent) {
@@ -228,15 +243,13 @@ class MoveMode implements Mode {
 // 	input(key: string, shiftKey: boolean) {}
 // }
 class EditMode implements Mode {
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${
-		keymap.moveViewLeft[0]
-	}, ${keymap.moveViewRight[0]}]: Move Start. [${keymap.moveCursorUp[0]}], [${
-		keymap.moveCursorDown[0]
-	}], [${keymap.moveCursorLeft[0]}], [${
-		keymap.moveCursorRight[0]
-	}]: Move End. [${keymap.flipLineDirection.join(', ')}]: H/V. [${
-		keymap.toggleStartArrow[0]
-	}]: Start Arrow. [${keymap.toggleEndArrow[0]}]: End Arrow. [${keymap.viewMode[0]}]: View Mode.`;
+	open() {
+		ws.drawScreen();
+	}
+
+	close() {
+		/* empty */
+	}
 
 	input(event: KeyboardEvent) {
 		if (keymap.viewMode.includes(event.key)) {
@@ -263,58 +276,24 @@ class EditMode implements Mode {
 }
 
 class CommandMode implements Mode {
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${
-		keymap.moveViewLeft[0]
-	}, ${keymap.moveViewRight[0]}]: Move Start. [${keymap.moveCursorUp[0]}], [${
-		keymap.moveCursorDown[0]
-	}], [${keymap.moveCursorLeft[0]}], [${
-		keymap.moveCursorRight[0]
-	}]: Move End. [${keymap.flipLineDirection.join(', ')}]: H/V. [${
-		keymap.toggleStartArrow[0]
-	}]: Start Arrow. [${keymap.toggleEndArrow[0]}]: End Arrow. [${keymap.viewMode[0]}]: View Mode.`;
-	autofillSelection = 0;
-	currentCommand = '';
-	options: Array<string> = [];
+	open() {
+		UserConsole.open();
+		UserConsole.input(':');
+		ws.selected = ws.underCursor();
+		ws.drawScreen();
+	}
 
-	constructor() {
-		this.options = getNextParameters(this.currentCommand);
+	close() {
+		UserConsole.close();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	input(event: KeyboardEvent) {
 		if (keymap.viewMode.includes(event.key)) {
 			ModeManager.setMode(Modes.VIEW_MODE);
-			this.currentCommand = '';
-		} else if (keymap.confirm.includes(event.key)) {
-			ws.runCommand(':' + this.currentCommand);
-			this.currentCommand = '';
-			ModeManager.setMode(Modes.VIEW_MODE);
-		} else if (event.key == 'Backspace' || event.key == 'Delete') {
-			this.currentCommand = this.currentCommand.slice(0, -1);
-			this.options = getNextParameters(this.currentCommand);
-		} else if (event.key == 'Tab') {
-			this.currentCommand =
-				this.currentCommand.slice(0, this.currentCommand.lastIndexOf(' ') + 1 ?? 0) +
-				this.options[this.autofillSelection];
-
-			this.options = getNextParameters(this.currentCommand);
-		} else if (event.key == 'ArrowUp') {
-			this.autofillSelection -= 1;
-			this.autofillSelection %= this.options.length;
-			if (this.autofillSelection < 0) {
-				this.autofillSelection = this.options.length - 1;
-			}
-		} else if (event.key == 'ArrowDown') {
-			this.autofillSelection += 1;
-			this.autofillSelection %= this.options.length;
-			if (this.autofillSelection < 0) {
-				this.autofillSelection = this.options.length - 1;
-			}
-		} else if (event.key.length == 1) {
-			this.currentCommand += event.key;
-			this.options = getNextParameters(this.currentCommand);
+		} else {
+			UserConsole.input(event.key);
 		}
-		ws.activeBindings = [];
 		ws.drawScreen();
 	}
 
@@ -336,6 +315,7 @@ class ModeManager {
 		if (!ws.allowedModes.includes(setTo)) {
 			return;
 		}
+		this.currentMode.close();
 		this.mode = setTo;
 		switch (setTo) {
 			case Modes.VIEW_MODE:
@@ -351,6 +331,7 @@ class ModeManager {
 				ModeManager.currentMode = new CommandMode();
 				break;
 		}
+		this.currentMode.open();
 	}
 }
 

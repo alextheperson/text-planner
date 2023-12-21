@@ -1,7 +1,7 @@
 import { display } from '$lib/components/stores';
 import Buffer from './buffer';
 import { parseExpression, CommandOutput, OUTPUT_TYPE } from './commands';
-import ModeManager, { CommandMode, Modes } from './modes';
+import ModeManager, { Modes } from './modes';
 import { ShapeList as SHAPES } from './shapes/index';
 import { FRAME_CHARS, type SerializedShape, type Shape } from './shapes/shape';
 import { TextBox } from './shapes/textbox';
@@ -16,6 +16,7 @@ import './commands/math';
 import './commands/movement';
 import './commands/settings';
 import './commands/logic';
+import { UserConsole } from './userConsole';
 
 class Workspace {
 	selected: Shape | null = null;
@@ -118,11 +119,11 @@ class Workspace {
 		}
 		this.displayBuffer.setChar(wp.cursorX - wp.canvasX, 1, FRAME_CHARS[1][1][0][0], '');
 
-		for (let i = 1; i < this.displayBuffer.height - 1; i++) {
+		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
 			// Vertical ruler
 			this.displayBuffer.setChar(0, i, FRAME_CHARS[1][1][0][0], '');
 		}
-		for (let i = 1; i < this.displayBuffer.height - 1; i++) {
+		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
 			// Vertical ruler
 			if (
 				(i + wp.canvasY) % 10 == 0 &&
@@ -145,103 +146,11 @@ class Workspace {
 
 		this.displayBuffer.setChar(0, 0, FRAME_CHARS[0][1][0][1], '');
 
-		let modeString = `|-????-|`;
-		if (ModeManager.mode == Modes.VIEW_MODE) {
-			modeString = `|-View-|`;
-		} else if (ModeManager.mode == Modes.EDIT_MODE) {
-			modeString = `|-Edit-|`;
-		} else if (ModeManager.mode == Modes.MOVE_MODE) {
-			modeString = `|-Move-|`;
-		} else if (ModeManager.mode == Modes.COMMAND) {
-			modeString = `|-Type-|`;
-		}
-
-		const permString = this.writable ? '' : `Readonly`;
-
-		this.displayBuffer.composite(
-			8,
-			this.displayBuffer.height - 2,
-			new TextBox(
-				new BindableInt(0),
-				new BindableInt(0),
-				new BindableString(
-					'&lt;|' +
-						(ModeManager.currentMode instanceof CommandMode
-							? ModeManager.currentMode.currentCommand + '_'
-							: '')
-				),
-				this.getId()
-			).render('')
-		); // Display the command prompt
-		this.displayBuffer.composite(
-			8,
-			this.displayBuffer.height - 1,
-			new TextBox(
-				new BindableInt(0),
-				new BindableInt(0),
-				new BindableString('|>'),
-				this.getId()
-			).render('')
-		);
-		this.displayBuffer.composite(
-			10,
-			this.displayBuffer.height - 1,
-			new TextBox(
-				new BindableInt(0),
-				new BindableInt(0),
-				new BindableString(this.currentOutput.message),
-				this.getId()
-			).render(
-				this.currentOutput.type == OUTPUT_TYPE.NORMAL
-					? ''
-					: this.currentOutput.type == OUTPUT_TYPE.ERROR
-					? 'error'
-					: this.currentOutput.type == OUTPUT_TYPE.WARNING
-					? 'warning'
-					: ''
-			)
-		); // Display the output prompt
 		this.displayBuffer.composite(
 			0,
-			this.displayBuffer.height - 2,
-			new TextBox(
-				new BindableInt(0),
-				new BindableInt(0),
-				new BindableString(modeString),
-				this.getId()
-			).render('')
+			this.displayBuffer.height - 5,
+			UserConsole.render(this.displayBuffer.width)
 		);
-		this.displayBuffer.composite(
-			0,
-			this.displayBuffer.height - 1,
-			new TextBox(
-				new BindableInt(0),
-				new BindableInt(0),
-				new BindableString(permString),
-				this.getId()
-			).render('')
-		);
-
-		if (ModeManager.currentMode instanceof CommandMode) {
-			let optionString = '';
-			for (let i = 0; i < ModeManager.currentMode.options.length; i++) {
-				if (ModeManager.currentMode.autofillSelection === i) {
-					optionString += '> ' + ModeManager.currentMode.options[i] + '\n';
-				} else {
-					optionString += '  ' + ModeManager.currentMode.options[i] + '\n';
-				}
-			}
-			this.displayBuffer.composite(
-				ModeManager.currentMode.currentCommand.lastIndexOf(' ') + 9,
-				this.displayBuffer.height - ModeManager.currentMode.options.length - 3,
-				new TextBox(
-					new BindableInt(0),
-					new BindableInt(0),
-					new BindableString(optionString),
-					this.getId()
-				).render('')
-			);
-		}
 
 		display.set(this.displayBuffer.render());
 		this.isFirstFrame = false;
