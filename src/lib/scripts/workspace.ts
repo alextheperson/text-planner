@@ -16,6 +16,8 @@ import './commands/math';
 import './commands/movement';
 import './commands/settings';
 import './commands/logic';
+import './commands/strings';
+import './commands/typeConversion';
 
 class Workspace {
 	selected: Shape | null = null;
