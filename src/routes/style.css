@@ -38,6 +38,11 @@ pre {
 	color: #c92;
 }
 
+.commandCursor {
+	background-color: black;
+	color: white;
+}
+
 .cursor {
 	backdrop-filter: invert(1);
 	-webkit-backdrop-filter: invert(1);
