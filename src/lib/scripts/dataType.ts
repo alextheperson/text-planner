@@ -98,10 +98,7 @@ export class BindableInt implements BindableValue {
 	}
 
 	setValue(value: number): void {
-		if (this.command === null) {
-			this.staticValue = value;
-		}
-		// this.command = null;
+		this.staticValue = value;
 	}
 
 	bind(command: Command | Value | null): void {
@@ -171,9 +168,7 @@ export class BindableString implements BindableValue {
 	}
 
 	setValue(value: string): void {
-		if (this.command === null) {
-			this.staticValue = value;
-		}
+		this.staticValue = value;
 		// this.command = null;
 	}
 
@@ -245,10 +240,7 @@ export class BindableBool implements BindableValue {
 	}
 
 	setValue(value: boolean): void {
-		if (this.command === null) {
-			this.staticValue = value;
-		}
-		// this.command = null;
+		this.staticValue = value;
 	}
 
 	bind(command: Command | Value | null): void {
