@@ -1,5 +1,5 @@
 import { CommandDefinition } from '../commands';
-import { STATIC_TYPES } from '../dataType';
+import { STATIC_TYPES, Value } from '../dataType';
 
 new CommandDefinition('if')
 	.addOverride(
@@ -14,4 +14,46 @@ new CommandDefinition('if')
 		STATIC_TYPES.ANY,
 		STATIC_TYPES.ANY
 	)
+	.register();
+
+new CommandDefinition('eq')
+	.addOverride(
+		(params) => {
+			return new Value(params[0].value == params[1].value, STATIC_TYPES.BOOLEAN);
+		},
+		STATIC_TYPES.ANY,
+		STATIC_TYPES.ANY
+	)
+	.register();
+
+new CommandDefinition('and')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as boolean) && (params[1].value as boolean),
+				STATIC_TYPES.BOOLEAN
+			);
+		},
+		STATIC_TYPES.BOOLEAN,
+		STATIC_TYPES.BOOLEAN
+	)
+	.register();
+
+new CommandDefinition('or')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as boolean) || (params[1].value as boolean),
+				STATIC_TYPES.BOOLEAN
+			);
+		},
+		STATIC_TYPES.BOOLEAN,
+		STATIC_TYPES.BOOLEAN
+	)
+	.register();
+
+new CommandDefinition('not')
+	.addOverride((params) => {
+		return new Value(params[0].value as boolean, STATIC_TYPES.BOOLEAN);
+	}, STATIC_TYPES.BOOLEAN)
 	.register();

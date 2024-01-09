@@ -98,10 +98,7 @@ export class BindableInt implements BindableValue {
 	}
 
 	setValue(value: number): void {
-		if (this.command === null) {
-			this.staticValue = value;
-		}
-		// this.command = null;
+		this.staticValue = value;
 	}
 
 	bind(command: Command | Value | null): void {
@@ -122,14 +119,18 @@ export class BindableInt implements BindableValue {
 			this.commandString = null;
 		}
 		if (this.command !== null && !ws.isFirstFrame) {
-			const result = this.command.execute();
-			if (typeof result.value === 'number' && result.type === STATIC_TYPES.INT) {
-				console.log('Evaluated command. Got', result.value);
-				return result.value;
+			try {
+				const result = this.command.execute();
+				if (typeof result.value === 'number' && result.type === STATIC_TYPES.INT) {
+					console.log('Evaluated command. Got', result.value);
+					return result.value;
+				}
+			} catch {
+				/* empty */
 			}
-			throw new Error(
-				`Bound Command did not return type <INT>, returned <${STATIC_TYPES[result.type]}> instead.`
-			);
+			// throw new Error(
+			// 	`Bound Command did not return type <INT>, returned <${STATIC_TYPES[result.type]}> instead.`
+			// );
 		}
 		return this.staticValue;
 	}
@@ -167,9 +168,7 @@ export class BindableString implements BindableValue {
 	}
 
 	setValue(value: string): void {
-		if (this.command === null) {
-			this.staticValue = value;
-		}
+		this.staticValue = value;
 		// this.command = null;
 	}
 
@@ -191,15 +190,19 @@ export class BindableString implements BindableValue {
 			this.commandString = null;
 		}
 		if (this.command !== null) {
-			const result = this.command.execute();
-			if (typeof result.value === 'string' && result.type === STATIC_TYPES.STRING) {
-				return result.value;
+			try {
+				const result = this.command.execute();
+				if (typeof result.value === 'string' && result.type === STATIC_TYPES.STRING) {
+					return result.value;
+				}
+			} catch {
+				/* empty */
 			}
-			throw new Error(
-				`Bound Command did not return type <STRING>, returned <${
-					STATIC_TYPES[result.type]
-				}> instead.`
-			);
+			// throw new Error(
+			// 	`Bound Command did not return type <STRING>, returned <${
+			// 		STATIC_TYPES[result.type]
+			// 	}> instead.`
+			// );
 		}
 		return this.staticValue;
 	}
@@ -237,10 +240,7 @@ export class BindableBool implements BindableValue {
 	}
 
 	setValue(value: boolean): void {
-		if (this.command === null) {
-			this.staticValue = value;
-		}
-		// this.command = null;
+		this.staticValue = value;
 	}
 
 	bind(command: Command | Value | null): void {
@@ -261,15 +261,19 @@ export class BindableBool implements BindableValue {
 			this.commandString = null;
 		}
 		if (this.command !== null && !ws.isFirstFrame) {
-			const result = this.command.execute();
-			if (typeof result.value === 'boolean' && result.type === STATIC_TYPES.BOOLEAN) {
-				return result.value;
+			try {
+				const result = this.command.execute();
+				if (typeof result.value === 'boolean' && result.type === STATIC_TYPES.BOOLEAN) {
+					return result.value;
+				}
+			} catch {
+				/* empty */
 			}
-			throw new Error(
-				`Bound Command did not return type <BOOLEAN>, returned <${
-					STATIC_TYPES[result.type]
-				}> instead.`
-			);
+			// throw new Error(
+			// 	`Bound Command did not return type <BOOLEAN>, returned <${
+			// 		STATIC_TYPES[result.type]
+			// 	}> instead.`
+			// );
 		}
 		return this.staticValue;
 	}

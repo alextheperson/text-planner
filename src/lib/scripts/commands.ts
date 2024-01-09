@@ -105,10 +105,10 @@ export function parseExpression(expression: string): Value | Command {
 	} else if (exp.match(/^[a-zA-Z]+$/)) {
 		// Match an implicit string
 		return new Value(exp, STATIC_TYPES.STRING);
-	} else if (exp.match(/^[0-9]+$/)) {
+	} else if (exp.match(/^-?[0-9]+$/)) {
 		// Match an integer
 		return new Value(parseInt(exp), STATIC_TYPES.INT);
-	} else if (exp.match(/^[0-9]+\.[0-9]*$/)) {
+	} else if (exp.match(/^-?[0-9]+\.[0-9]*$/)) {
 		// Match a float
 		return new Value(parseFloat(exp), STATIC_TYPES.FLOAT);
 	} else if (exp === '@c') {

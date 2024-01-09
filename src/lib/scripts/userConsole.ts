@@ -72,7 +72,6 @@ class CommandConsole {
 	render(width: number, height: number) {
 		// debugger;
 		this.scrollPosition = Math.max(this.cursorPosition + 15 - width, 0);
-		console.log(this.lines);
 		const buffer = new Buffer(width, height, '');
 
 		let modeString = `|-????-|`;
@@ -237,12 +236,6 @@ class CommandConsole {
 	 */
 	input(key: string) {
 		if (key.length === 1) {
-			// if (this.historyPosition !== 0) {
-			// 	console.log(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
-			// 	this.lines.unshift(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
-			// 	this.lines.shift();
-			// 	this.historyPosition = 0;
-			// }
 			this.addChar(key, this.cursorPosition);
 			this.cursorPosition = Math.min(this.cursorPosition + 1, this.currentLine.message.length);
 			if (key === '"') {
@@ -432,7 +425,6 @@ class CommandConsole {
 					!(currentPatternPart instanceof Array) &&
 					currentToken.type !== patterns[i].pattern[j]
 				) {
-					console.log(currentToken, currentPatternPart);
 					matches = false;
 					break;
 				} else if (
@@ -471,7 +463,6 @@ class CommandConsole {
 	 */
 	applyAutofill() {
 		const newToken = this.currentAutofill[this.autofillPosition];
-		console.log(newToken);
 		this.currentTokens.pop();
 		this.currentTokens.push(newToken);
 		this.currentLine.message = ':' + this.currentTokens.join(' ');
