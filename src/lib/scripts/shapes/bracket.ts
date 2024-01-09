@@ -206,21 +206,27 @@ export default class Bracket implements Shape {
 
 	move(cursorX: number, cursorY: number, deltaX: number, deltaY: number): void {
 		this.positionX.value += deltaX;
-		if (this.height.value - deltaY > 1) {
-			if (cursorX === this.positionX.value && cursorY === this.positionY.value) {
+		if (cursorX === this.positionX.value && cursorY === this.positionY.value) {
+			if (this.height.value - deltaY >= 2) {
 				this.positionY.value += deltaY;
 				this.height.value -= deltaY;
 				wp.moveCursor(deltaX, deltaY);
-			} else if (
-				cursorX === this.positionX.value &&
-				cursorY === this.positionY.value + this.height.value - 1
-			) {
+			} else {
+				return;
+			}
+		} else if (
+			cursorX === this.positionX.value &&
+			cursorY === this.positionY.value + this.height.value - 1
+		) {
+			if (this.height.value + deltaY >= 2) {
 				this.height.value += deltaY;
 				wp.moveCursor(deltaX, deltaY);
 			} else {
-				this.positionY.value += deltaY;
-				wp.moveCursor(deltaX, deltaY);
+				return;
 			}
+		} else {
+			this.positionY.value += deltaY;
+			wp.moveCursor(deltaX, deltaY);
 		}
 	}
 

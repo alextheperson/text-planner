@@ -8,8 +8,8 @@ Commands allow you to do just about anything in Text Planner. They let you do si
 
 ## Roadmap
 
-- Finish parser upgrades
-- Add command binding
-- Add easy binding with snapping
+- (DONE) Finish parser upgrades
+- (DONE) Add command binding
+- (DONE) Add easy binding with snapping
 - Add help & preference documents
 - Add scripting support

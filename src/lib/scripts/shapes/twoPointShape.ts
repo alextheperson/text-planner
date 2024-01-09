@@ -14,7 +14,6 @@ import {
 import type { Bindings, SerializedShape, Shape } from './shape';
 
 export class TwoPointShape implements Shape {
-	// TODO: Make these getters
 	positionX: BindableInt = new BindableInt(0);
 	positionY: BindableInt = new BindableInt(0);
 	width: BindableInt = new BindableInt(0);
