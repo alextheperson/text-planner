@@ -39,7 +39,7 @@ new CommandDefinition('int')
 new CommandDefinition('float')
 	.addOverride((params) => {
 		const string = params[0].value as string;
-		if (string.match(/^-?[0-9]+(.[0-9]+)?$/)) {
+		if (string.match(/^-?[0-9]+(\.[0-9]+)?$/)) {
 			return new Value(parseFloat(string), STATIC_TYPES.FLOAT);
 		} else {
 			throw new Error(`The STRING '${string}' cannot be parsed ino an FLOAT.`);
