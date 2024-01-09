@@ -82,17 +82,17 @@ new CommandDefinition('mod')
 new CommandDefinition('floor')
 	.addOverride((params) => {
 		return new Value(Math.floor(params[0].value as number), STATIC_TYPES.INT);
-	}, STATIC_TYPES.INT)
+	}, STATIC_TYPES.FLOAT)
 	.register();
 
 new CommandDefinition('ceil')
 	.addOverride((params) => {
 		return new Value(Math.ceil(params[0].value as number), STATIC_TYPES.INT);
-	}, STATIC_TYPES.INT)
+	}, STATIC_TYPES.FLOAT)
 	.register();
 
 new CommandDefinition('round')
 	.addOverride((params) => {
 		return new Value(Math.round(params[0].value as number), STATIC_TYPES.INT);
-	}, STATIC_TYPES.INT)
+	}, STATIC_TYPES.FLOAT)
 	.register();
