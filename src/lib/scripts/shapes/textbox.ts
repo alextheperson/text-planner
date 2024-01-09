@@ -30,10 +30,10 @@ export class TextBox implements Shape {
 			STATIC_TYPES.INT,
 			() => {
 				return new Value(this.positionX.value, STATIC_TYPES.INT);
-			} //,
-			// (val) => {
-			// 	this.positionX.bind(val);
-			// }
+			},
+			(val) => {
+				this.positionX.bind(val);
+			}
 		),
 		new Binding(
 			'position/y',
@@ -41,10 +41,10 @@ export class TextBox implements Shape {
 
 			() => {
 				return new Value(this.positionY.value, STATIC_TYPES.INT);
-			} //,
-			// (val) => {
-			// 	this.positionY.bind(val);
-			// }
+			},
+			(val) => {
+				this.positionY.bind(val);
+			}
 		),
 		new Binding('size/width', STATIC_TYPES.INT, () => {
 			return new Value(this.width.value, STATIC_TYPES.INT);
