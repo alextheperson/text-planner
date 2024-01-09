@@ -100,7 +100,10 @@ class MoveMode implements Mode {
 	}
 
 	close(): void {
-		/* empty */
+		if (this.willAutoBind) {
+			this.checkForBindings(true);
+		}
+		ws.activeBindings = [];
 	}
 
 	input(event: KeyboardEvent) {
@@ -130,7 +133,7 @@ class MoveMode implements Mode {
 		ws.selected?.move(wp.cursorX, wp.cursorY, deltaX, deltaY);
 		// move(event);
 		if (this.willAutoBind) {
-			ws.activeBindings = this.checkForBindings();
+			ws.activeBindings = this.checkForBindings(false);
 		} else {
 			ws.activeBindings = [];
 		}
@@ -146,41 +149,42 @@ class MoveMode implements Mode {
 		ws.drawScreen();
 	}
 
-	checkForBindings() {
-		function pairBindings(list: Binding[]) {
-			const pairedBindings: Map<string, { x: Binding | null; y: Binding | null }> = new Map();
-			for (let i = 0; i < list.length; i++) {
-				const namespace = list[i].name.slice(0, -2);
-				const pair = pairedBindings.get(namespace);
-				if (pair === undefined) {
-					if (list[i].name.slice(-2) === '/x') {
-						pairedBindings.set(namespace, {
-							x: list[i],
-							y: null
-						});
-					} else if (list[i].name.slice(-2) === '/y') {
-						pairedBindings.set(namespace, {
-							x: null,
-							y: list[i]
-						});
-					}
-				} else if (list[i].name.slice(-2) === '/x') {
-					pair.x = list[i];
-					pairedBindings.set(namespace, pair);
+	pairBindings(list: Binding[]) {
+		const pairedBindings: Map<string, { x: Binding | null; y: Binding | null }> = new Map();
+		for (let i = 0; i < list.length; i++) {
+			const namespace = list[i].name.slice(0, -2);
+			const pair = pairedBindings.get(namespace);
+			if (pair === undefined) {
+				if (list[i].name.slice(-2) === '/x') {
+					pairedBindings.set(namespace, {
+						x: list[i],
+						y: null
+					});
 				} else if (list[i].name.slice(-2) === '/y') {
-					pair.y = list[i];
-					pairedBindings.set(namespace, pair);
+					pairedBindings.set(namespace, {
+						x: null,
+						y: list[i]
+					});
 				}
+			} else if (list[i].name.slice(-2) === '/x') {
+				pair.x = list[i];
+				pairedBindings.set(namespace, pair);
+			} else if (list[i].name.slice(-2) === '/y') {
+				pair.y = list[i];
+				pairedBindings.set(namespace, pair);
 			}
-			return pairedBindings;
 		}
+		return pairedBindings;
+	}
+
+	checkForBindings(shouldBind: boolean) {
 		if (ws.selected === null) {
 			return [];
 		}
 		const availableBindings = ws.selected.bindings.filter(
 			(val) => val.settable && (val.name.slice(-2) === '/x' || val.name.slice(-2) === '/y')
 		);
-		const pairedSelfBindings = pairBindings(availableBindings);
+		const pairedSelfBindings = this.pairBindings(availableBindings);
 		const shape = ws.elements
 			.filter((val) => val !== ws.selected)
 			// get all shapes within 10units of the cursor
@@ -194,7 +198,7 @@ class MoveMode implements Mode {
 			})
 			.at(0);
 		const otherBindings = shape?.bindings || [];
-		const otherPairs = pairBindings(otherBindings);
+		const otherPairs = this.pairBindings(otherBindings);
 		const pairs: { x: number; y: number }[] = [];
 		pairedSelfBindings.forEach((pair) => {
 			otherPairs.forEach((pair2) => {
@@ -210,24 +214,14 @@ class MoveMode implements Mode {
 					pair.x.getValue().value === pair2.x.getValue().value &&
 					pair.y.getValue().value === pair2.y.getValue().value
 				) {
-					console.log(
-						parseExpression(`(get @i${shape?.id} "${pair2.y.name}")`),
-						`(get @i${shape?.id} "${pair2.y.name}")`
-					);
-					pair.x.setValue(
-						(parseExpression(`(get @i${shape?.id} "${pair2.x.name}")`) as Value).value as Command
-					);
-					pair.y.setValue(
-						(parseExpression(`(get @i${shape?.id} "${pair2.y.name}")`) as Value).value as Command
-					);
-					console.log(
-						pair.x?.name,
-						pair2.x?.name,
-						pair.x?.getValue(),
-						pair2.x?.getValue(),
-						pair.y?.getValue(),
-						pair2.y?.getValue()
-					);
+					if (shouldBind) {
+						pair.x.setValue(
+							(parseExpression(`(get @i${shape?.id} "${pair2.x.name}")`) as Value).value as Command
+						);
+						pair.y.setValue(
+							(parseExpression(`(get @i${shape?.id} "${pair2.y.name}")`) as Value).value as Command
+						);
+					}
 					pairs.push({
 						x: pair.x.getValue().value as number,
 						y: pair.y.getValue().value as number

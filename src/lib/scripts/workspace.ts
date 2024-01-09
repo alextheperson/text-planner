@@ -148,8 +148,8 @@ class Workspace {
 
 		this.displayBuffer.composite(
 			0,
-			this.displayBuffer.height - 5,
-			UserConsole.render(this.displayBuffer.width)
+			0,
+			UserConsole.render(this.displayBuffer.width, this.displayBuffer.height)
 		);
 
 		display.set(this.displayBuffer.render());

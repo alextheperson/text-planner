@@ -1,13 +1,25 @@
 import Buffer from './buffer';
 import { parseExpression, OUTPUT_TYPE, Command, CommandRegistry } from './commands';
-import { BindableInt, BindableString, STATIC_TYPES } from './dataType';
+import { BindableInt, BindableString, STATIC_TYPES, Value } from './dataType';
 import { keymap } from './keymap';
-import ModeManager, { CommandMode, Modes } from './modes';
+import ModeManager, { Modes } from './modes';
 import { TextBox } from './shapes/textbox';
 
+/**
+ * Represents a line in the console.
+ */
 class ConsoleLine {
+	/**
+	 * The actual content of the line.
+	 */
 	message: string;
+	/**
+	 * Determines the type of message it is. Changes its color onscreen.
+	 */
 	type: OUTPUT_TYPE;
+	/**
+	 * Whether the line was typed by the user or was the output of a command.
+	 */
 	input: boolean;
 	constructor(message: string, type: OUTPUT_TYPE, input: boolean) {
 		this.message = message;
@@ -30,10 +42,6 @@ class CommandConsole {
 	 */
 	cursorPosition = 0;
 	/**
-	 * A list of previously run commands. May or may not be valid.
-	 */
-	private commandHistory: string[] = [];
-	/**
 	 * The lines that the console is currently displaying. Index 0 is at the bottom, with increasing indices going up.
 	 */
 	private lines: ConsoleLine[] = [];
@@ -49,14 +57,19 @@ class CommandConsole {
 	 * What row of the autofill options the user has selected
 	 */
 	private autofillPosition = 0;
+	/**
+	 * The current command split into its tokens (used for autofill)
+	 */
+	private currentTokens: string[] = [];
 
 	/**
 	 * Renders the console in its current state.
 	 * @param width The width of the screen. Determines the width of the console.
 	 * @returns A buffer with the rendered console.
 	 */
-	render(width: number): Buffer {
-		const buffer = new Buffer(width, this.historyDisplayLines, '');
+	render(width: number, height: number) {
+		console.log(this.lines);
+		const buffer = new Buffer(width, height, '');
 
 		let modeString = `|-????-|`;
 		if (ModeManager.mode === Modes.VIEW_MODE) {
@@ -69,11 +82,9 @@ class CommandConsole {
 			modeString = `|-CMND-|`;
 		}
 
-		// const permString = this.writable ? '' : `Readonly`;
-
 		buffer.composite(
 			0,
-			0,
+			buffer.height - this.historyDisplayLines,
 			new TextBox(
 				new BindableInt(0),
 				new BindableInt(0),
@@ -85,7 +96,7 @@ class CommandConsole {
 			const currentLine = this.lines[i];
 			buffer.composite(
 				8,
-				buffer.height - (i + 1),
+				buffer.height - (this.historyDisplayLines - i),
 				new TextBox(
 					new BindableInt(0),
 					new BindableInt(0),
@@ -95,7 +106,7 @@ class CommandConsole {
 			); // Display the command prompt
 			buffer.composite(
 				10,
-				buffer.height - (i + 1),
+				buffer.height - (this.historyDisplayLines - i),
 				new TextBox(
 					new BindableInt(0),
 					new BindableInt(0),
@@ -112,7 +123,7 @@ class CommandConsole {
 			if (i === 0 && ModeManager.mode === Modes.COMMAND) {
 				buffer.composite(
 					10 + this.cursorPosition,
-					buffer.height - (i + 1),
+					buffer.height - (this.historyDisplayLines - i),
 					new TextBox(
 						new BindableInt(0),
 						new BindableInt(0),
@@ -123,7 +134,16 @@ class CommandConsole {
 			}
 		}
 
-		if (ModeManager.currentMode instanceof CommandMode && this.currentAutofill.length > 0) {
+		if (
+			this.lines.length > 0 &&
+			this.lines[this.historyPosition]?.message !== undefined &&
+			this.lines[this.historyPosition].message.length > 0
+		) {
+			this.currentAutofill = this.getAutofillOptions();
+		} else {
+			this.currentAutofill = [];
+		}
+		if (ModeManager.mode === Modes.COMMAND && this.currentAutofill.length > 0) {
 			let optionString = '';
 			for (let i = 0; i < this.currentAutofill.length; i++) {
 				if (this.autofillPosition === i) {
@@ -133,8 +153,8 @@ class CommandConsole {
 				}
 			}
 			buffer.composite(
-				this.commandHistory[0].lastIndexOf(' ') + 9,
-				buffer.height - this.currentAutofill.length - 3,
+				this.lines[this.historyPosition].message.lastIndexOf(' ') + 9,
+				buffer.height - this.currentAutofill.length - this.historyDisplayLines,
 				new TextBox(
 					new BindableInt(0),
 					new BindableInt(0),
@@ -161,13 +181,14 @@ class CommandConsole {
 	 * Adds a new blank input line to the console if there isn't one already.
 	 */
 	open() {
-		if (this.lines.length !== 0 && this.lines[0].message === '' && this.lines[0].input) {
+		if (
+			this.lines.length !== 0 &&
+			this.lines[this.historyPosition].message === '' &&
+			this.lines[this.historyPosition].input
+		) {
 			this.lines.shift();
-			this.commandHistory.shift();
 		}
-		this.commandHistory.unshift('');
-		this.commandHistory = this.commandHistory.slice(0, this.historyLength);
-		this.lines.unshift(new ConsoleLine(this.commandHistory[0], OUTPUT_TYPE.NORMAL, true));
+		this.lines.unshift(new ConsoleLine('', OUTPUT_TYPE.NORMAL, true));
 		this.lines = this.lines.slice(0, this.historyDisplayLines);
 		this.cursorPosition = 0;
 	}
@@ -176,7 +197,7 @@ class CommandConsole {
 	 * Clears any content in the bottom row of the console, if that row in an input row.
 	 */
 	close() {
-		if (!this.lines[0].input) {
+		if (!this.lines[this.historyPosition].input) {
 			return;
 		}
 		this.lines.shift();
@@ -190,12 +211,16 @@ class CommandConsole {
 	input(key: string) {
 		if (key.length === 1) {
 			if (this.historyPosition !== 0) {
-				this.commandHistory.unshift(this.commandHistory[this.historyPosition]);
-				this.commandHistory.slice(0, this.historyLength);
+				console.log(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
+				this.lines.unshift(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
+				this.lines.slice(0, this.historyLength);
 				this.historyPosition = 0;
 			}
 			this.addChar(key, this.cursorPosition);
-			this.cursorPosition = Math.min(this.cursorPosition + 1, this.commandHistory[0].length);
+			this.cursorPosition = Math.min(
+				this.cursorPosition + 1,
+				this.lines[this.historyPosition].message.length
+			);
 			if (key === '"') {
 				this.addChar('"', this.cursorPosition);
 			} else if (key === '(') {
@@ -207,14 +232,18 @@ class CommandConsole {
 			this.cursorPosition = Math.max(this.cursorPosition - 1, 0);
 		} else if (keymap.confirm.includes(key)) {
 			this.run();
+			ModeManager.setMode(Modes.VIEW_MODE);
 		} else if (keymap.moveCursorUp.includes(key)) {
-			if (this.commandHistory[0].length === 0) {
-				this.historyPosition = Math.max(this.historyPosition + 1, this.commandHistory.length);
+			if (this.lines[this.historyPosition].message.length === 0) {
+				this.historyPosition = Math.max(this.historyPosition + 1, this.lines.length - 1);
 			} else {
-				this.autofillPosition = Math.max(this.autofillPosition + 1, this.currentAutofill.length);
+				this.autofillPosition = Math.max(
+					this.autofillPosition + 1,
+					this.currentAutofill.length - 1
+				);
 			}
 		} else if (keymap.moveCursorDown.includes(key)) {
-			if (this.commandHistory[0].length === 0) {
+			if (this.lines[this.historyPosition].message.length === 0) {
 				this.historyPosition = Math.min(this.historyPosition - 1, 0);
 			} else {
 				this.autofillPosition = Math.min(this.autofillPosition - 1, 0);
@@ -222,7 +251,12 @@ class CommandConsole {
 		} else if (keymap.moveCursorLeft.includes(key)) {
 			this.cursorPosition = Math.max(this.cursorPosition - 1, 0);
 		} else if (keymap.moveCursorRight.includes(key)) {
-			this.cursorPosition = Math.min(this.cursorPosition + 1, this.commandHistory[0].length);
+			this.cursorPosition = Math.min(
+				this.cursorPosition + 1,
+				this.lines[this.historyPosition].message.length
+			);
+		} else if (key === 'Tab') {
+			this.applyAutofill();
 		}
 	}
 
@@ -232,10 +266,11 @@ class CommandConsole {
 	 * @param index The index to add it at
 	 */
 	addChar(char: string, index: number) {
-		this.commandHistory[0] =
-			this.commandHistory[0].slice(0, index) + char + this.commandHistory[0].slice(index);
-		if (this.lines[0].input) {
-			this.lines[0].message = this.commandHistory[this.historyPosition];
+		if (this.lines[this.historyPosition].input) {
+			this.lines[this.historyPosition].message =
+				this.lines[this.historyPosition].message.slice(0, index) +
+				char +
+				this.lines[this.historyPosition].message.slice(index);
 		}
 	}
 
@@ -244,10 +279,10 @@ class CommandConsole {
 	 * @param index The index of the character to delete
 	 */
 	deleteChar(index: number) {
-		this.commandHistory[0] =
-			this.commandHistory[0].slice(0, Math.max(0, index - 1)) + this.commandHistory[0].slice(index);
-		if (this.lines[0].input) {
-			this.lines[0].message = this.commandHistory[this.historyPosition];
+		if (this.lines[this.historyPosition].input) {
+			this.lines[this.historyPosition].message =
+				this.lines[this.historyPosition].message.slice(0, Math.max(0, index - 1)) +
+				this.lines[this.historyPosition].message.slice(index);
 		}
 	}
 
@@ -256,7 +291,7 @@ class CommandConsole {
 	 */
 	run() {
 		try {
-			const output = parseExpression(this.commandHistory[this.historyPosition]);
+			const output = parseExpression(this.lines[this.historyPosition].message);
 			this.addLine(
 				`(${STATIC_TYPES[output instanceof Command ? 'COMMAND' : output.type]}) ${
 					output instanceof Command ? output.string : output.value
@@ -270,29 +305,42 @@ class CommandConsole {
 	}
 
 	/**
-	 * Gets a list of values that could work in teh token that the cursor is on.
-	 * @param start The currently entered command
-	 * @returns A list of values for the currently edited token
+	 * Parses a string into an array of tokens.
+	 * @param string The string to split
+	 * @returns An array of tokens parsed from the string
 	 */
-	getAutofillOptions(start: string): string[] {
-		let possibilities: string[] = [];
+	tokenizeExpression(string: string) {
 		const tokens: string[] = [];
 		let currentToken = '';
 		let inQuotes = false;
+		const expr = string.slice(1);
 
-		for (let i = 0; i < start.length; i++) {
-			currentToken += start[i];
-			if (start[i] === "'" && start[i - 1] !== '\\') {
+		for (let i = 0; i < expr.length; i++) {
+			currentToken += expr[i];
+			if (expr[i] === "'" && expr[i - 1] !== '\\') {
 				inQuotes = !inQuotes;
 			}
-			if ((start[i] === ' ' && !inQuotes) || i === start.length - 1) {
+			if ((expr[i] === ' ' && !inQuotes) || i === expr.length - 1) {
 				tokens.push(currentToken.trimEnd());
 				currentToken = '';
 			}
-			if (start[i] === ' ' && i === start.length - 1) {
+			if (expr[i] === ' ' && i === expr.length - 1) {
 				tokens.push(currentToken);
 			}
 		}
+		return tokens;
+	}
+
+	/**
+	 * Gets a list of values that could work in teh token that the cursor is on.
+	 * @param expr The currently entered command
+	 * @returns A list of values for the currently edited token
+	 */
+	getAutofillOptions() {
+		const start = this.lines[this.historyPosition].message ?? '';
+		let possibilities: string[] = [];
+		const tokens = this.tokenizeExpression(start);
+		this.currentTokens = tokens;
 
 		if (tokens.length <= 1) {
 			CommandRegistry.commands.forEach((val) => {
@@ -320,6 +368,82 @@ class CommandConsole {
 		}
 
 		return possibilities;
+	}
+
+	/**
+	 * Gets an array of possible command overrides that could match the currently typed command.
+	 * @param start The beginning of the command
+	 * @returns An array of passible patterns that the command could fit
+	 */
+	getPatterns(start: string) {
+		const possibilities: string[] = [];
+		const tokens = this.tokenizeExpression(start).slice(0, -1);
+		let patterns;
+
+		try {
+			patterns = CommandRegistry.getPatterns(tokens[0]);
+		} catch {
+			return [];
+		}
+		const parsedTokens = tokens
+			.slice(1)
+			.filter((val) => val.length > 0)
+			.map((val) => parseExpression(val));
+
+		for (let i = 0; i < patterns.length; i++) {
+			let matches = true;
+			for (let j = 0; j < parsedTokens.length; j++) {
+				const currentToken = parsedTokens[j];
+				const currentPatternPart = patterns[i].pattern[j];
+				if (
+					currentToken instanceof Value &&
+					!(currentPatternPart instanceof Array) &&
+					currentToken.type !== patterns[i].pattern[j]
+				) {
+					console.log(currentToken, currentPatternPart);
+					matches = false;
+					break;
+				} else if (
+					currentToken instanceof Value &&
+					currentToken.type === STATIC_TYPES.STRING &&
+					currentPatternPart instanceof Array &&
+					!(currentPatternPart as Array<string>).includes(currentToken.value as string)
+				) {
+					matches = false;
+					break;
+				}
+			}
+			if (matches) {
+				possibilities.push(
+					':' +
+						tokens[0] +
+						' ' +
+						patterns[i].pattern
+							.map((val) => {
+								if (val instanceof Array) {
+									return '"' + val.join('"|"') + '"';
+								} else {
+									return '<' + STATIC_TYPES[val] + '>';
+								}
+							})
+							.join(' ')
+				);
+			}
+		}
+
+		return possibilities;
+	}
+
+	/**
+	 * Replaces the currently edited token with the selected autofill option
+	 */
+	applyAutofill() {
+		const newToken = this.currentAutofill[this.autofillPosition];
+		console.log(newToken);
+		this.currentTokens.pop();
+		this.currentTokens.push(newToken);
+		this.lines[this.historyPosition].message = ':' + this.currentTokens.join(' ');
+		this.cursorPosition = this.lines[this.historyPosition].message.length;
 	}
 }
 
