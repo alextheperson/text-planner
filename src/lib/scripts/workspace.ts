@@ -77,11 +77,15 @@ class Workspace {
 
 		for (let i = 0; i < this.elements.length; i++) {
 			// Display the user's content
-			this.displayBuffer.composite(
-				this.elements[i].positionX.value - wp.canvasX,
-				this.elements[i].positionY.value - wp.canvasY,
-				this.elements[i].render(this.elements[i] == this.selected ? 'selected' : '')
-			);
+			try {
+				this.displayBuffer.composite(
+					this.elements[i].positionX.value - wp.canvasX,
+					this.elements[i].positionY.value - wp.canvasY,
+					this.elements[i].render(this.elements[i] == this.selected ? 'selected' : '')
+				);
+			} catch (e) {
+				UserConsole.addLine((e as Error).message, OUTPUT_TYPE.ERROR);
+			}
 		}
 
 		for (let i = 0; i < this.activeBindings.length; i++)
