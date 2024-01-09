@@ -13,3 +13,4 @@ Commands allow you to do just about anything in Text Planner. They let you do si
 - (DONE) Add easy binding with snapping
 - Add help & preference documents
 - Add scripting support
+- Add support for documents within documents (binding GUI)
