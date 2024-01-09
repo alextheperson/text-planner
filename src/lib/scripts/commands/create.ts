@@ -1,11 +1,3 @@
-import Vector2 from '../vector';
-import {
-	IntParameter,
-	Pattern,
-	StaticParameter,
-	StringParameter,
-	Vector2Parameter
-} from './command-definition';
 import { workspace as ws } from '../workspace';
 import { TextBox } from '../shapes/textbox';
 import { Line } from '../shapes/line';
@@ -14,152 +6,224 @@ import { Rectangle } from '../shapes/rectangle';
 import { Bookmark } from '../shapes/bookmark';
 import { Button } from '../shapes/button';
 import { wp } from '$lib/components/stores';
-import Bracket, { BracketType } from '../shapes/bracket';
-import { Side } from '../shapes/shape';
+import Bracket from '../shapes/bracket';
+import { Command, CommandDefinition } from '../commands';
+import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
 
-const createCommandName = ['new'];
-
-export default [
-	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['text'])], () => {
-		ws.elements.push(new TextBox(new Vector2(wp.cursor.x, wp.cursor.y), 'New Text'));
-		// `New TextBox created at (${ws.cursor.x}, ${ws.cursor.y})`
-	}),
-	new Pattern(
-		[new StaticParameter(createCommandName), new StaticParameter(['text']), new StringParameter()],
+new CommandDefinition('new')
+	.addOverride(() => {
+		ws.elements.push(
+			new TextBox(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableString('New Text'),
+				ws.getId()
+			)
+		);
+		// `New TextBox created at (${ws.cursorX}, ${ws.cursorY})`
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['text'])
+	.addOverride(
 		(params) => {
-			ws.elements.push(new TextBox(new Vector2(wp.cursor.x, wp.cursor.y), params[1].getString()));
-			// `New TextBox created at (${ws.cursor.x}, ${ws.cursor.y}) with the content '${params[1].parsed.toString()}'`
-		}
-	),
-	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['line'])], () => {
-		ws.elements.push(new Line(wp.cursor.x, wp.cursor.y, wp.cursor.x + 5, wp.cursor.y + 5));
-		// `New Line created from (${ws.cursor.x}, ${ws.cursor.y}) to (${ws.cursor.x + 5}, ${ws.cursor.y + 5})`
-	}),
-	new Pattern(
-		[
-			new StaticParameter(createCommandName),
-			new StaticParameter(['line']),
-			new Vector2Parameter(),
-			new Vector2Parameter()
-		],
+			ws.elements.push(
+				new TextBox(
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
+					new BindableString(params[1].value as string),
+					ws.getId()
+				)
+			);
+			console.log('abc');
+			// `New TextBox created at (${ws.cursorX}, ${ws.cursorY}) with the content '${params[1].parsed.toString()}'`
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+		['text'],
+		STATIC_TYPES.STRING
+	)
+	.addOverride(() => {
+		ws.elements.push(
+			new Line(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(wp.cursorX + 5),
+				new BindableInt(wp.cursorY + 5),
+				ws.getId()
+			)
+		);
+		// `New Line created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`
+
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['line'])
+	.addOverride(
 		(params) => {
 			ws.elements.push(
 				new Line(
-					params[1].getVector().x,
-					params[1].getVector().y,
-					params[2].getVector().x,
-					params[2].getVector().y
+					new BindableInt(params[1].value as number),
+					new BindableInt(params[2].value as number),
+					new BindableInt(params[3].value as number),
+					new BindableInt(params[4].value as number),
+					ws.getId()
 				)
 			);
 			// `New Line created from (${params[1].parsed as number}, ${params[2].parsed as number}) to (${params[3].parsed as number}, ${params[4].parsed as number})`
-		}
-	),
-	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['connector'])], () => {
-		ws.elements.push(new Connector(wp.cursor.x, wp.cursor.y, wp.cursor.x + 5, wp.cursor.y + 5));
-		// `New Connector created from (${ws.cursor.x}, ${ws.cursor.y}) to (${ws.cursor.x + 5}, ${ws.cursor.y + 5})`,
-	}),
-	new Pattern(
-		[
-			new StaticParameter(createCommandName),
-			new StaticParameter(['connector']),
-			new IntParameter(),
-			new IntParameter(),
-			new IntParameter(),
-			new IntParameter()
-		],
+
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+		['line'],
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
+	.addOverride(() => {
+		ws.elements.push(
+			new Connector(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(wp.cursorX + 5),
+				new BindableInt(wp.cursorY + 5),
+				ws.getId()
+			)
+		);
+		// `New Connector created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`,
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['connector'])
+	.addOverride(
 		(params) => {
+			console.log(params[1].value);
 			ws.elements.push(
 				new Connector(
-					params[1].getInt(),
-					params[2].getInt(),
-					params[3].getInt(),
-					params[4].getInt()
+					new BindableInt(params[1].value as number),
+					new BindableInt(params[2].value as number),
+					new BindableInt(params[3].value as number),
+					new BindableInt(params[4].value as number),
+					ws.getId()
 				)
 			);
 			// `New Connector created from (${params[1].parsed as number}, ${params[2].parsed as number}) to (${params[3].parsed as number}, ${params[4].parsed as number})`
-		}
-	),
-	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['rect'])], () => {
-		ws.elements.push(new Rectangle(wp.cursor.x, wp.cursor.y, wp.cursor.x + 5, wp.cursor.y + 5));
-		// `New Rectangle created from (${ws.cursor.x}, ${ws.cursor.y}) to (${ws.cursor.x + 5}, ${ws.cursor.y + 5})`
-	}),
-	new Pattern(
-		[
-			new StaticParameter(createCommandName),
-			new StaticParameter(['rect']),
-			new IntParameter(),
-			new IntParameter(),
-			new IntParameter(),
-			new IntParameter()
-		],
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+		['connector'],
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
+	.addOverride(() => {
+		ws.elements.push(
+			new Rectangle(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(wp.cursorX + 5),
+				new BindableInt(wp.cursorY + 5),
+				ws.getId()
+			)
+		);
+		// `New Rectangle created from (${ws.cursorX}, ${ws.cursorY}) to (${ws.cursorX + 5}, ${ws.cursorY + 5})`
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['rect'])
+	.addOverride(
 		(params) => {
 			ws.elements.push(
 				new Rectangle(
-					params[1].getInt(),
-					params[2].getInt(),
-					params[3].getInt(),
-					params[4].getInt()
+					new BindableInt(params[1].value as number),
+					new BindableInt(params[2].value as number),
+					new BindableInt(params[3].value as number),
+					new BindableInt(params[4].value as number),
+					ws.getId()
 				)
 			);
 			// `New Rectangle created from (${params[1].parsed as number}, ${params[2].parsed as number}) to (${params[3].parsed as number}, ${params[4].parsed as number})`
-		}
-	),
-	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['bookmark'])], () => {
-		ws.elements.push(new Bookmark(new Vector2(wp.cursor.x, wp.cursor.y), 'New Bookmark'));
-		// `New Bookmark created at (${ws.cursor.x}, ${ws.cursor.y})`
-	}),
-	new Pattern(
-		[
-			new StaticParameter(createCommandName),
-			new StaticParameter(['bookmark']),
-			new StringParameter()
-		],
-		(params) => {
-			ws.elements.push(new Bookmark(new Vector2(wp.cursor.x, wp.cursor.y), params[1].getString()));
-			// `New Bookmark created at (${ws.cursor.x}, ${ws.cursor.y}) with the name ${params[1].parsed as string}`
-		}
-	),
-	new Pattern(
-		[
-			new StaticParameter(createCommandName),
-			new StaticParameter(['button']),
-			new StringParameter()
-		],
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+		['rect'],
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
+	.addOverride(() => {
+		ws.elements.push(
+			new Bookmark(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableString('New Bookmark'),
+				ws.getId()
+			)
+		);
+		// `New Bookmark created at (${ws.cursorX}, ${ws.cursorY})`
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['bookmark'])
+	.addOverride(
 		(params) => {
 			ws.elements.push(
-				new Button(new Vector2(wp.cursor.x, wp.cursor.y), params[1].getString(), 'New Button')
+				new Bookmark(
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
+					new BindableString(params[1].value as string),
+					ws.getId()
+				)
 			);
-			// `New Button created at (${ws.cursor.x}, ${ws.cursor.y}) with the action ${params[1].parsed as string}`
-		}
-	),
-	new Pattern(
-		[
-			new StaticParameter(createCommandName),
-			new StaticParameter(['button']),
-			new StringParameter(),
-			new StringParameter()
-		],
+			// `New Bookmark created at (${ws.cursorX}, ${ws.cursorY}) with the name ${params[1].parsed as string}`
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+
+		['bookmark'],
+		STATIC_TYPES.STRING
+	)
+	.addOverride(
 		(params) => {
 			ws.elements.push(
 				new Button(
-					new Vector2(wp.cursor.x, wp.cursor.y),
-					params[1].getString(),
-					params[2].getString()
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
+					params[1].value as Command,
+					new BindableString('New Button'),
+					ws.getId()
 				)
 			);
-			// `New Button created at (${ws.cursor.x}, ${ws.cursor.y}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
-		}
-	),
-	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['bracket'])], () => {
+			// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string}`
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+		['button'],
+		STATIC_TYPES.COMMAND
+	)
+	.addOverride(
+		(params) => {
+			ws.elements.push(
+				new Button(
+					new BindableInt(wp.cursorX),
+					new BindableInt(wp.cursorY),
+					params[1].value as Command,
+					new BindableString(params[2].value as string),
+					ws.getId()
+				)
+			);
+			// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+
+		['button'],
+		STATIC_TYPES.COMMAND,
+		STATIC_TYPES.STRING
+	)
+	.addOverride(() => {
 		ws.elements.push(
-			new Bracket(new Vector2(wp.cursor.x, wp.cursor.y), 3, BracketType.CURLY, Side.LEFT)
+			new Bracket(
+				new BindableInt(wp.cursorX),
+				new BindableInt(wp.cursorY),
+				new BindableInt(3),
+				ws.getId()
+			)
 		);
-		// `New Button created at (${ws.cursor.x}, ${ws.cursor.y}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
-	}),
-	new Pattern([new StaticParameter(createCommandName), new StaticParameter(['file'])], () => {
+		// `New Button created at (${ws.cursorX}, ${ws.cursorY}) with the action ${params[1].parsed as string} text ${params[2].parsed as string}`
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['bracket'])
+	.addOverride(() => {
 		ws.elements = [];
 		ws.fileName = '';
-		wp.setCursorCoords(new Vector2(0, 0));
-		wp.setCanvasCoords(new Vector2(0, 0));
-	})
-];
+		wp.setCursorCoords(0, 0);
+		wp.setCanvasCoords(0, 0);
+		return new Value(null, STATIC_TYPES.NULL);
+	}, ['file'])
+	.register();

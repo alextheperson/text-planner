@@ -1,13 +1,25 @@
 import { display } from '$lib/components/stores';
 import Buffer from './buffer';
-import { parseCommand } from './commands';
-import { CommandOutput, OutputType } from './commands/command-definition';
-import ModeManager, { CommandMode, Modes } from './modes';
+import { parseExpression, CommandOutput, OUTPUT_TYPE } from './commands';
+import ModeManager, { Modes } from './modes';
 import { ShapeList as SHAPES } from './shapes/index';
-import { FRAME_CHARS, type Shape } from './shapes/shape';
+import { FRAME_CHARS, type SerializedShape, type Shape } from './shapes/shape';
 import { TextBox } from './shapes/textbox';
-import Vector2 from './vector';
 import { wp } from '$lib/components/stores';
+import { BindableInt, BindableString, STATIC_TYPES, Value } from './dataType';
+
+import './commands/bindings';
+import './commands/create';
+import './commands/edit';
+import './commands/io';
+import './commands/math';
+import './commands/movement';
+import './commands/settings';
+import './commands/logic';
+import './commands/strings';
+import './commands/typeConversion';
+import { UserConsole } from './userConsole';
+
 class Workspace {
 	selected: Shape | null = null;
 
@@ -22,7 +34,7 @@ class Workspace {
 
 	currentCommand = '';
 	lastCommand = '';
-	currentOutput = new CommandOutput('', OutputType.NORMAL);
+	currentOutput = new CommandOutput('', OUTPUT_TYPE.NORMAL);
 
 	showInvisibleChars = false;
 
@@ -30,23 +42,26 @@ class Workspace {
 	allowedModes = [Modes.VIEW_MODE, Modes.EDIT_MODE, Modes.MOVE_MODE, Modes.COMMAND];
 	fileName = '';
 
+	activeBindings: { x: number; y: number }[] = [];
+	isFirstFrame = false;
+
 	constructor() {
 		// setInterval(() => {
 		// 	this.showCommandCursor = !this.showCommandCursor;
 		// 	this.drawScreen();
 		// }, 550);
-		this.displayBuffer = new Buffer(wp.canvasSize.x, wp.canvasSize.y, ' ');
+		this.displayBuffer = new Buffer(wp.canvasWidth, wp.canvasHeight, ' ');
 
 		wp.subscribe(() => {
 			this.drawScreen();
 		});
 
-		wp.setCursorCoords(new Vector2(0, 0));
+		wp.setCursorCoords(0, 0);
 	}
 
 	underCursor(): Shape | null {
 		for (let i = 0; i < this.elements.length; i++) {
-			if (this.elements[i] && this.elements[i].isOn(wp.cursor.x, wp.cursor.y)) {
+			if (this.elements[i] && this.elements[i].isOn(wp.cursorX, wp.cursorY)) {
 				return this.elements[i];
 			}
 		}
@@ -58,16 +73,32 @@ class Workspace {
 	// }
 
 	drawScreen() {
-		this.displayBuffer = new Buffer(wp.canvasSize.x, wp.canvasSize.y, '&nbsp;');
+		this.displayBuffer = new Buffer(wp.canvasWidth, wp.canvasHeight, '&nbsp;');
 
 		for (let i = 0; i < this.elements.length; i++) {
 			// Display the user's content
-			this.displayBuffer.composite(
-				this.elements[i].position.x - wp.canvas.x,
-				this.elements[i].position.y - wp.canvas.y,
-				this.elements[i].render(this.elements[i] == this.selected ? 'selected' : '')
-			);
+			try {
+				this.displayBuffer.composite(
+					this.elements[i].positionX.value - wp.canvasX,
+					this.elements[i].positionY.value - wp.canvasY,
+					this.elements[i].render(this.elements[i] == this.selected ? 'selected' : '')
+				);
+			} catch (e) {
+				UserConsole.addLine((e as Error).message, OUTPUT_TYPE.ERROR);
+			}
 		}
+
+		for (let i = 0; i < this.activeBindings.length; i++)
+			this.displayBuffer.composite(
+				this.activeBindings[i].x - wp.canvasX,
+				this.activeBindings[i].y - wp.canvasY,
+				new TextBox(
+					new BindableInt(0),
+					new BindableInt(0),
+					new BindableString('X'),
+					this.getId()
+				).render('')
+			); // Display bindings
 
 		for (let i = 1; i < this.displayBuffer.width - 1; i++) {
 			// Horizontal ruler
@@ -76,110 +107,75 @@ class Workspace {
 		for (let i = 1; i < this.displayBuffer.width - 1; i++) {
 			// Horizontal ruler
 			if (
-				(i + wp.canvas.x) % 10 == 0 &&
-				(i + wp.canvas.x).toString().length - 1 < this.displayBuffer.width - i
+				(i + wp.canvasX) % 10 == 0 &&
+				(i + wp.canvasX).toString().length - 1 < this.displayBuffer.width - i
 			) {
-				const string = ` ${(i + wp.canvas.x).toString()} `;
-				this.displayBuffer.composite(i - 1, 0, new TextBox(new Vector2(0, 0), string).render(''));
-			}
-		}
-		for (let i = 1; i < this.displayBuffer.height - 1; i++) {
-			// Vertical ruler
-			this.displayBuffer.setChar(0, i, FRAME_CHARS[1][1][0][0], '');
-		}
-		for (let i = 1; i < this.displayBuffer.height - 1; i++) {
-			// Vertical ruler
-			if (
-				(i + wp.canvas.y) % 10 == 0 &&
-				(i + wp.canvas.y).toString().length + 1 < this.displayBuffer.height - i
-			) {
-				const string = ` ${(i + wp.canvas.y).toString()} `;
+				const string = ` ${(i + wp.canvasX).toString()} `;
 				this.displayBuffer.composite(
-					0,
 					i - 1,
-					new TextBox(new Vector2(0, 0), string.split('').join('\n')).render('')
+					0,
+					new TextBox(
+						new BindableInt(0),
+						new BindableInt(0),
+						new BindableString(string),
+						this.getId()
+					).render('')
 				);
 			}
 		}
+		this.displayBuffer.setChar(wp.cursorX - wp.canvasX, 1, FRAME_CHARS[1][1][0][0], '');
+
+		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
+			// Vertical ruler
+			this.displayBuffer.setChar(0, i, FRAME_CHARS[1][1][0][0], '');
+		}
+		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
+			// Vertical ruler
+			if (
+				(i + wp.canvasY) % 10 == 0 &&
+				(i + wp.canvasY).toString().length + 1 < this.displayBuffer.height - i
+			) {
+				const string = ` ${(i + wp.canvasY).toString()} `;
+				this.displayBuffer.composite(
+					0,
+					i - 1,
+					new TextBox(
+						new BindableInt(0),
+						new BindableInt(0),
+						new BindableString(string.split('').join('\n')),
+						this.getId()
+					).render('')
+				);
+			}
+		}
+		this.displayBuffer.setChar(1, wp.cursorY - wp.canvasY, FRAME_CHARS[0][0][1][1], '');
 
 		this.displayBuffer.setChar(0, 0, FRAME_CHARS[0][1][0][1], '');
 
-		let modeString = `|-????-|`;
-		if (ModeManager.mode == Modes.VIEW_MODE) {
-			modeString = `|-View-|`;
-		} else if (ModeManager.mode == Modes.EDIT_MODE) {
-			modeString = `|-Edit-|`;
-		} else if (ModeManager.mode == Modes.MOVE_MODE) {
-			modeString = `|-Move-|`;
-		} else if (ModeManager.mode == Modes.COMMAND) {
-			modeString = `|-Type-|`;
-		}
-
-		const permString = this.writable ? '' : `Readonly`;
-
-		this.displayBuffer.composite(
-			8,
-			this.displayBuffer.height - 2,
-			new TextBox(
-				new Vector2(0, 0),
-				'&lt;|' +
-					(ModeManager.currentMode instanceof CommandMode
-						? ModeManager.currentMode.currentCommand + '_'
-						: '')
-			).render('')
-		); // Display the command prompt
-		this.displayBuffer.composite(
-			8,
-			this.displayBuffer.height - 1,
-			new TextBox(new Vector2(0, 0), '|>').render('')
-		);
-		this.displayBuffer.composite(
-			10,
-			this.displayBuffer.height - 1,
-			new TextBox(new Vector2(0, 0), this.currentOutput.content).render(
-				this.currentOutput.type == OutputType.NORMAL
-					? ''
-					: this.currentOutput.type == OutputType.ERROR
-					? 'error'
-					: this.currentOutput.type == OutputType.WARNING
-					? 'warning'
-					: ''
-			)
-		); // Display the output prompt
 		this.displayBuffer.composite(
 			0,
-			this.displayBuffer.height - 2,
-			new TextBox(new Vector2(0, 0), modeString).render('')
-		);
-		this.displayBuffer.composite(
 			0,
-			this.displayBuffer.height - 1,
-			new TextBox(new Vector2(0, 0), permString).render('')
+			UserConsole.render(this.displayBuffer.width, this.displayBuffer.height)
 		);
-
-		if (ModeManager.currentMode instanceof CommandMode) {
-			let optionString = '';
-			for (let i = 0; i < ModeManager.currentMode.options.length; i++) {
-				if (ModeManager.currentMode.autofillSelection === i) {
-					optionString += '> ' + ModeManager.currentMode.options[i] + '\n';
-				} else {
-					optionString += '  ' + ModeManager.currentMode.options[i] + '\n';
-				}
-			}
-			this.displayBuffer.composite(
-				ModeManager.currentMode.currentCommand.lastIndexOf(' ') + 9,
-				this.displayBuffer.height - ModeManager.currentMode.options.length - 2,
-				new TextBox(new Vector2(0, 0), optionString).render('')
-			);
-		}
 
 		display.set(this.displayBuffer.render());
+		this.isFirstFrame = false;
 	}
 
 	runCommand(command: string) {
-		const output = parseCommand(command);
-		if (output instanceof CommandOutput) {
-			this.currentOutput = output;
+		try {
+			const output = parseExpression(command);
+			if (output instanceof Value) {
+				this.currentOutput = new CommandOutput(
+					`(${STATIC_TYPES[output.type]}) ${output.value}`,
+					OUTPUT_TYPE.NORMAL
+				);
+			}
+			if (output instanceof CommandOutput) {
+				this.currentOutput = output;
+			}
+		} catch (e) {
+			this.currentOutput = new CommandOutput((e as Error).message, OUTPUT_TYPE.ERROR);
 		}
 		this.selected = this.underCursor();
 		this.drawScreen();
@@ -188,7 +184,9 @@ class Workspace {
 	cullElements() {
 		for (let i = 0; i < this.elements.length; i++) {
 			if (this.elements[i].shouldRemove) {
+				console.log(this.elements[i]);
 				this.elements.splice(i, 1);
+				console.log(this.elements, i);
 				i -= 1; //since we just deleted an element
 			}
 		}
@@ -199,19 +197,21 @@ class Workspace {
 		let string = '';
 		let output = new CommandOutput(
 			`Saved the workspace to file ${normalizedPath}`,
-			OutputType.NORMAL
+			OUTPUT_TYPE.NORMAL
 		);
 		string = JSON.stringify({
-			cursorPosition: wp.cursor,
-			viewPosition: new Vector2(wp.canvas.x, wp.canvas.y),
+			cursorPositionX: wp.cursorX,
+			cursorPositionY: wp.cursorY,
+			viewPositionX: wp.canvasX,
+			viewPositionY: wp.canvasY,
 			allowedModes: this.allowedModes
 		});
 		this.elements.forEach((el) => {
-			const stringified = (el.constructor as typeof Shape).serialize(el);
+			const stringified = JSON.stringify((el.constructor as typeof Shape).serialize(el));
 			if (stringified.match(/.*\[,\].*/) !== null) {
 				output = new CommandOutput(
 					`Saved the workspace to file ${normalizedPath}, but it contained '[,]' which had to be escaped.`,
-					OutputType.WARNING
+					OUTPUT_TYPE.WARNING
 				);
 			}
 			string += '[,]' + stringified.replace('[,]', '[]');
@@ -227,10 +227,11 @@ class Workspace {
 	}
 
 	loadElements(path: string): CommandOutput {
+		this.isFirstFrame = true;
 		const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
 		const parts = localStorage.getItem(normalizedPath)?.split('[,]') ?? [];
 		if (parts.length < 1) {
-			return new CommandOutput(`The files ${normalizedPath} does not exist`, OutputType.ERROR);
+			return new CommandOutput(`The files ${normalizedPath} does not exist`, OUTPUT_TYPE.ERROR);
 		}
 		const list = parts.slice(1);
 		const state = JSON.parse(parts[0]);
@@ -240,24 +241,22 @@ class Workspace {
 				return;
 			}
 			for (let i = 0; i < SHAPES.length; i++) {
-				const decoded = SHAPES[i].deserialize(el);
+				const decoded = SHAPES[i].deserialize(JSON.parse(el) as SerializedShape);
 				if (decoded !== null) {
 					this.elements.push(decoded);
 				}
 			}
 		});
 		this.fileName = normalizedPath;
-		wp.setCursorCoords(
-			new Vector2(state['cursorPosition']['x'] ?? 0, state['cursorPosition']['y'] ?? 0)
-		);
-		wp.setCanvasCoords(new Vector2(state['viewPosition']['x'], state['viewPosition']['y']));
+		wp.setCursorCoords(state['cursorPositionX'] ?? 0, state['cursorPositionY'] ?? 0);
+		wp.setCanvasCoords(state['viewPositionX'], state['viewPositionY']);
 		this.allowedModes = state['allowedModes'];
 		ModeManager.setMode(Modes.VIEW_MODE);
-		return new CommandOutput(`Loaded the workspace ${path}`, OutputType.NORMAL);
+		return new CommandOutput(`Loaded the workspace ${path}`, OUTPUT_TYPE.NORMAL);
 	}
 
-	getId(): number {
-		return 1;
+	getId(): string {
+		return 'a' + Math.floor(Math.random() * 1000);
 	}
 }
 

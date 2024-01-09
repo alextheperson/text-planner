@@ -1,9 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type Buffer from '../buffer';
-import type { Value } from '../commands/command-definition';
-import type Vector2 from '../vector';
+import type { Command } from '../commands';
+import type {
+	BindableInt,
+	STATIC_TYPES,
+	Value,
+	SerializedBindable,
+	BindingList
+} from '../dataType';
 
-const FRAME_CHARS = [
+export const FRAME_CHARS = [
 	[
 		//no top
 		[
@@ -35,34 +41,66 @@ const FRAME_CHARS = [
 	]
 ];
 
-enum LineDirection {
+export enum LineDirection {
 	Y_FIRST,
 	X_FIRST
 }
 
-enum Side {
+export enum Side {
 	LEFT,
 	RIGHT
 }
 
+export type Bindings = {
+	[index: string]: {
+		propertyName: string;
+		gettable: boolean;
+		settable: boolean;
+		type: STATIC_TYPES;
+	};
+};
+
 export abstract class Shape {
-	abstract position: Vector2;
-	abstract size: Vector2;
+	abstract positionX: BindableInt;
+	abstract positionY: BindableInt;
+	abstract width: BindableInt;
+	abstract height: BindableInt;
+	/**
+	 * The binding that the shape has. They can (and should) be namespaced with slashes ("position/x")
+	 */
+	abstract readonly bindings: BindingList;
 	abstract shouldRemove: boolean;
-	abstract readonly id: number;
+	abstract readonly id: string;
 
 	abstract render(className: string): Buffer;
-	abstract input(cursor: Vector2, event: KeyboardEvent): boolean; // Returns true if the key did something, false otherwise.
-	abstract move(cursor: Vector2, movement: Vector2): void;
-	abstract interact(cursor: Vector2, event: KeyboardEvent): boolean; // Returns true if the key did something, false otherwise. Run during the view mode.
+	abstract input(cursorX: number, cursorY: number, event: KeyboardEvent): boolean; // Returns true if the key did something, false otherwise.
+	abstract move(cursorX: number, cursorY: number, deltaX: number, deltaY: number): void;
+	/**
+	 * Runs when a user emits a keyboard event while in edit mode with the shape selected
+	 * @param cursor The cursor position
+	 * @param event The keyboard event
+	 * @returns `true` if the keyboard event had any effect on the shape
+	 */
+	abstract interact(cursorX: number, cursorY: number, event: KeyboardEvent): boolean;
 	abstract isOn(x: number, y: number): boolean;
 	// abstract getAttribute(name: string): CommandOutput;
-	static serialize(input: Shape): string {
-		return '{_type: "Shape"}';
+	static serialize(input: Shape): SerializedShape {
+		return { _type: 'Shape', id: '$' };
 	}
-	static deserialize(input: string): Shape | null {
+	static deserialize(input: SerializedShape): Shape | null {
 		return null;
 	}
 }
 
-export { FRAME_CHARS, LineDirection, Side };
+export type SerializedShape = {
+	_type: string;
+	id: string;
+	[index: string]:
+		| string
+		| number
+		| boolean
+		| Command
+		| SerializedBindable<string>
+		| SerializedBindable<number>
+		| SerializedBindable<boolean>;
+};

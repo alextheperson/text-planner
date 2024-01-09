@@ -1,7 +1,8 @@
 import { wp } from '$lib/components/stores';
-import { getNextParameters } from './commands';
+import { Command, parseExpression } from './commands';
+import { STATIC_TYPES, type Binding, Value } from './dataType';
 import { keymap } from './keymap';
-import Vector2 from './vector';
+import { UserConsole } from './userConsole';
 import { workspace as ws } from './workspace';
 
 const FAST_MOVE_SPEED = 5;
@@ -22,37 +23,48 @@ enum ShapeTypes {
 
 function move(event: KeyboardEvent) {
 	if (keymap.moveViewUp.includes(event.key)) {
-		wp.moveCanvas(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
-		// wp.moveCursor(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
+		wp.moveCanvas(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
+		// wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
 	} else if (keymap.moveViewDown.includes(event.key)) {
-		wp.moveCanvas(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
-		// wp.moveCursor(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
+		wp.moveCanvas(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
+		// wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
 	} else if (keymap.moveViewLeft.includes(event.key)) {
-		wp.moveCanvas(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
-		// wp.moveCursor(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
+		wp.moveCanvas(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
+		// wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
 	} else if (keymap.moveViewRight.includes(event.key)) {
-		wp.moveCanvas(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
-		// wp.moveCursor(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
+		wp.moveCanvas(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
+		// wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
 	} else if (keymap.moveCursorUp.includes(event.key)) {
-		wp.moveCursor(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
+		wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
 	} else if (keymap.moveCursorDown.includes(event.key)) {
-		wp.moveCursor(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
+		wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
 	} else if (keymap.moveCursorLeft.includes(event.key)) {
-		wp.moveCursor(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
+		wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
 	} else if (keymap.moveCursorRight.includes(event.key)) {
-		wp.moveCursor(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
+		wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
 	}
 }
 
 interface Mode {
-	keybindString: string;
 	input(event: KeyboardEvent): void;
 	click(event: MouseEvent): void;
+	open(): void;
+	close(): void;
 }
 
 class ViewMode implements Mode {
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${keymap.moveViewLeft[0]}], [${keymap.moveViewRight[0]}]: Move View. [${keymap.moveCursorUp[0]}], [${keymap.moveCursorDown[0]}], [${keymap.moveCursorLeft[0]}], [${keymap.moveCursorRight[0]}]: Move Cursor. [${keymap.select[0]}]: Move Object. [${keymap.editMode[0]}]: Edit. [${keymap.moveMode[0]}]: Move.`;
+	open() {
+		try {
+			ws.selected = ws.underCursor();
+			ws.drawScreen();
+		} catch {
+			/* empty */
+		}
+	}
 
+	close() {
+		/* empty */
+	}
 	input(event: KeyboardEvent) {
 		move(event);
 		if (keymap.select.includes(event.key) || keymap.editMode.includes(event.key)) {
@@ -63,18 +75,17 @@ class ViewMode implements Mode {
 		} else if (event.key == ':') {
 			ModeManager.setMode(Modes.COMMAND);
 		} else if (ws.selected !== null) {
-			ws.selected.interact(new Vector2(wp.cursor.x, wp.cursor.y), event);
+			ws.selected.interact(wp.cursorX, wp.cursorY, event);
 		}
 		ws.selected = ws.underCursor();
+		ws.activeBindings = [];
 		ws.drawScreen();
 	}
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		ws.selected = ws.underCursor();
 		ws.drawScreen();
@@ -82,83 +93,173 @@ class ViewMode implements Mode {
 }
 
 class MoveMode implements Mode {
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${keymap.moveViewLeft[0]}], [${keymap.moveViewRight[0]}]: Move View. [${keymap.moveCursorUp[0]}], [${keymap.moveCursorDown[0]}], [${keymap.moveCursorLeft[0]}], [${keymap.moveCursorRight[0]}]: Move Object. [${keymap.viewMode[0]}]: View Mode.`;
+	willAutoBind = true;
+
+	open() {
+		ws.selected = ws.underCursor();
+	}
+
+	close(): void {
+		if (this.willAutoBind) {
+			this.checkForBindings(true);
+		}
+		ws.activeBindings = [];
+	}
 
 	input(event: KeyboardEvent) {
-		let movement = new Vector2(0, 0);
-		if (
-			keymap.confirm.includes(event.key) ||
-			keymap.cancel.includes(event.key) ||
-			keymap.viewMode.includes(event.key)
-		) {
+		let deltaX = 0;
+		let deltaY = 0;
+		if (keymap.confirm.includes(event.key) || keymap.viewMode.includes(event.key)) {
 			ModeManager.setMode(Modes.VIEW_MODE);
 		} else if (keymap.moveViewUp.includes(event.key)) {
-			wp.moveCursor(new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
+			wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
 		} else if (keymap.moveViewDown.includes(event.key)) {
-			wp.moveCursor(new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
+			wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveViewLeft.includes(event.key)) {
-			wp.moveCursor(new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
+			wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
 		} else if (keymap.moveViewRight.includes(event.key)) {
-			wp.moveCursor(new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
+			wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
 		} else if (keymap.moveCursorUp.includes(event.key)) {
-			movement = new Vector2(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
+			deltaY = -(event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveCursorDown.includes(event.key)) {
-			movement = new Vector2(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
+			deltaY = event.shiftKey ? FAST_MOVE_SPEED : 1;
 		} else if (keymap.moveCursorLeft.includes(event.key)) {
-			movement = new Vector2(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
+			deltaX = -(event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveCursorRight.includes(event.key)) {
-			movement = new Vector2(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
+			deltaX = event.shiftKey ? FAST_MOVE_SPEED : 1;
+		} else if (keymap.cancel.includes(event.key)) {
+			this.willAutoBind = !this.willAutoBind;
 		}
-		ws.selected?.move(new Vector2(wp.cursor.x, wp.cursor.y), movement);
+		ws.selected?.move(wp.cursorX, wp.cursorY, deltaX, deltaY);
 		// move(event);
-		ws.selected = ws.underCursor();
+		if (this.willAutoBind) {
+			ws.activeBindings = this.checkForBindings(false);
+		} else {
+			ws.activeBindings = [];
+		}
 		ws.drawScreen();
 	}
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		ws.selected = ws.underCursor();
 		ws.drawScreen();
 	}
+
+	pairBindings(list: Binding[]) {
+		const pairedBindings: Map<string, { x: Binding | null; y: Binding | null }> = new Map();
+		for (let i = 0; i < list.length; i++) {
+			const namespace = list[i].name.slice(0, -2);
+			const pair = pairedBindings.get(namespace);
+			if (pair === undefined) {
+				if (list[i].name.slice(-2) === '/x') {
+					pairedBindings.set(namespace, {
+						x: list[i],
+						y: null
+					});
+				} else if (list[i].name.slice(-2) === '/y') {
+					pairedBindings.set(namespace, {
+						x: null,
+						y: list[i]
+					});
+				}
+			} else if (list[i].name.slice(-2) === '/x') {
+				pair.x = list[i];
+				pairedBindings.set(namespace, pair);
+			} else if (list[i].name.slice(-2) === '/y') {
+				pair.y = list[i];
+				pairedBindings.set(namespace, pair);
+			}
+		}
+		return pairedBindings;
+	}
+
+	checkForBindings(shouldBind: boolean) {
+		if (ws.selected === null) {
+			return [];
+		}
+		const availableBindings = ws.selected.bindings.filter(
+			(val) => val.settable && (val.name.slice(-2) === '/x' || val.name.slice(-2) === '/y')
+		);
+		const pairedSelfBindings = this.pairBindings(availableBindings);
+		const shape = ws.elements
+			.filter((val) => val !== ws.selected)
+			// get all shapes within 10units of the cursor
+			.sort((val1, val2) => {
+				return (
+					((wp.cursorX - val1.positionX.value) ** 2 + (wp.cursorY - val1.positionY.value) ** 2) **
+						0.5 -
+					((wp.cursorX - val2.positionX.value) ** 2 + (wp.cursorY - val2.positionY.value) ** 2) **
+						0.5
+				);
+			})
+			.at(0);
+		const otherBindings = shape?.bindings || [];
+		const otherPairs = this.pairBindings(otherBindings);
+		const pairs: { x: number; y: number }[] = [];
+		pairedSelfBindings.forEach((pair) => {
+			otherPairs.forEach((pair2) => {
+				if (
+					pair.x !== null &&
+					pair2.x !== null &&
+					pair.y !== null &&
+					pair2.y !== null &&
+					pair.x.getValue().type === STATIC_TYPES.INT &&
+					pair2.x.getValue().type === STATIC_TYPES.INT &&
+					pair.y.getValue().type === STATIC_TYPES.INT &&
+					pair2.y.getValue().type === STATIC_TYPES.INT &&
+					pair.x.getValue().value === pair2.x.getValue().value &&
+					pair.y.getValue().value === pair2.y.getValue().value
+				) {
+					if (shouldBind) {
+						pair.x.setValue(
+							(parseExpression(`(get @i${shape?.id} "${pair2.x.name}")`) as Value).value as Command
+						);
+						pair.y.setValue(
+							(parseExpression(`(get @i${shape?.id} "${pair2.y.name}")`) as Value).value as Command
+						);
+					}
+					pairs.push({
+						x: pair.x.getValue().value as number,
+						y: pair.y.getValue().value as number
+					});
+				}
+			});
+		});
+		return pairs;
+	}
 }
+
 // class DrawMode implements Mode {
 // 	input(key: string, shiftKey: boolean) {}
 // }
 class EditMode implements Mode {
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${
-		keymap.moveViewLeft[0]
-	}, ${keymap.moveViewRight[0]}]: Move Start. [${keymap.moveCursorUp[0]}], [${
-		keymap.moveCursorDown[0]
-	}], [${keymap.moveCursorLeft[0]}], [${
-		keymap.moveCursorRight[0]
-	}]: Move End. [${keymap.flipLineDirection.join(', ')}]: H/V. [${
-		keymap.toggleStartArrow[0]
-	}]: Start Arrow. [${keymap.toggleEndArrow[0]}]: End Arrow. [${keymap.viewMode[0]}]: View Mode.`;
+	open() {
+		ws.drawScreen();
+	}
+
+	close() {
+		/* empty */
+	}
 
 	input(event: KeyboardEvent) {
 		if (keymap.viewMode.includes(event.key)) {
 			ModeManager.setMode(Modes.VIEW_MODE);
 			// ws.selectedType = ShapeTypes.NONE;
-		} else if (
-			ws.selected !== null &&
-			!ws.selected.input(new Vector2(wp.cursor.x, wp.cursor.y), event)
-		) {
+		} else if (ws.selected !== null && !ws.selected.input(wp.cursorX, wp.cursorY, event)) {
 			move(event);
 		}
+		ws.activeBindings = [];
 		ws.drawScreen();
 	}
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		const hoveredElement = ws.underCursor();
 		if (ws.selected === null || hoveredElement instanceof ws.selected.constructor) {
@@ -169,66 +270,31 @@ class EditMode implements Mode {
 }
 
 class CommandMode implements Mode {
-	keybindString = `[${keymap.moveViewUp[0]}], [${keymap.moveViewDown[0]}], [${
-		keymap.moveViewLeft[0]
-	}, ${keymap.moveViewRight[0]}]: Move Start. [${keymap.moveCursorUp[0]}], [${
-		keymap.moveCursorDown[0]
-	}], [${keymap.moveCursorLeft[0]}], [${
-		keymap.moveCursorRight[0]
-	}]: Move End. [${keymap.flipLineDirection.join(', ')}]: H/V. [${
-		keymap.toggleStartArrow[0]
-	}]: Start Arrow. [${keymap.toggleEndArrow[0]}]: End Arrow. [${keymap.viewMode[0]}]: View Mode.`;
-	autofillSelection = 0;
-	currentCommand = '';
-	options: Array<string> = [];
+	open() {
+		UserConsole.open();
+		UserConsole.input(':');
+		ws.selected = ws.underCursor();
+		ws.drawScreen();
+	}
 
-	constructor() {
-		this.options = getNextParameters(this.currentCommand);
+	close() {
+		UserConsole.close();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	input(event: KeyboardEvent) {
 		if (keymap.viewMode.includes(event.key)) {
 			ModeManager.setMode(Modes.VIEW_MODE);
-			this.currentCommand = '';
-		} else if (keymap.confirm.includes(event.key)) {
-			ws.runCommand(this.currentCommand);
-			this.currentCommand = '';
-			ModeManager.setMode(Modes.VIEW_MODE);
-		} else if (event.key == 'Backspace' || event.key == 'Delete') {
-			this.currentCommand = this.currentCommand.slice(0, -1);
-			this.options = getNextParameters(this.currentCommand);
-		} else if (event.key == 'Tab') {
-			this.currentCommand =
-				this.currentCommand.slice(0, this.currentCommand.lastIndexOf(' ') + 1 ?? 0) +
-				this.options[this.autofillSelection];
-
-			this.options = getNextParameters(this.currentCommand);
-		} else if (event.key == 'ArrowUp') {
-			this.autofillSelection -= 1;
-			this.autofillSelection %= this.options.length;
-			if (this.autofillSelection < 0) {
-				this.autofillSelection = this.options.length - 1;
-			}
-		} else if (event.key == 'ArrowDown') {
-			this.autofillSelection += 1;
-			this.autofillSelection %= this.options.length;
-			if (this.autofillSelection < 0) {
-				this.autofillSelection = this.options.length - 1;
-			}
-		} else if (event.key.length == 1) {
-			this.currentCommand += event.key;
-			this.options = getNextParameters(this.currentCommand);
+		} else {
+			UserConsole.input(event.key);
 		}
 		ws.drawScreen();
 	}
 
 	click(event: MouseEvent): void {
 		wp.setCursorCoords(
-			new Vector2(
-				Math.floor(event.clientX / wp.characterSize.x) + wp.canvas.x,
-				Math.floor(event.clientY / wp.characterSize.y) + wp.canvas.y
-			)
+			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
+			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
 		);
 		ws.drawScreen();
 		ws.selected = ws.underCursor();
@@ -243,6 +309,7 @@ class ModeManager {
 		if (!ws.allowedModes.includes(setTo)) {
 			return;
 		}
+		this.currentMode.close();
 		this.mode = setTo;
 		switch (setTo) {
 			case Modes.VIEW_MODE:
@@ -258,6 +325,7 @@ class ModeManager {
 				ModeManager.currentMode = new CommandMode();
 				break;
 		}
+		this.currentMode.open();
 	}
 }
 
