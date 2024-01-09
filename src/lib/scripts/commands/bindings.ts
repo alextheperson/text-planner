@@ -60,3 +60,21 @@ new CommandDefinition('unbind')
 		STATIC_TYPES.STRING
 	)
 	.register();
+
+new CommandDefinition('set')
+	.addOverride(
+		(params) => {
+			const shape = params[0].value as Shape;
+			const name = params[1].value as string;
+			const binding = shape.bindings.filter((val) => val.name === name).at(0);
+			if (binding === undefined) {
+				throw new Error(`The shape does not have a binding with name '${name}'`);
+			}
+			binding.setValue(params[2]);
+			return new Value(null, STATIC_TYPES.NULL);
+		},
+		STATIC_TYPES.SHAPE,
+		STATIC_TYPES.STRING,
+		STATIC_TYPES.ANY
+	)
+	.register();
