@@ -44,7 +44,7 @@ class CommandConsole {
 	/**
 	 * The lines that the console is currently displaying. Index 0 is at the bottom, with increasing indices going up.
 	 */
-	private lines: ConsoleLine[] = [];
+	private lines: ConsoleLine[] = [new ConsoleLine('', OUTPUT_TYPE.NORMAL, true)];
 	/**
 	 * Where in the list of previous commands the user is on. When they make an edit, this is set to 0.
 	 */
@@ -62,12 +62,16 @@ class CommandConsole {
 	 */
 	private currentTokens: string[] = [];
 
+	private scrollPosition = 0;
+
 	/**
 	 * Renders the console in its current state.
 	 * @param width The width of the screen. Determines the width of the console.
 	 * @returns A buffer with the rendered console.
 	 */
 	render(width: number, height: number) {
+		// debugger;
+		this.scrollPosition = Math.max(this.cursorPosition + 15 - width, 0);
 		console.log(this.lines);
 		const buffer = new Buffer(width, height, '');
 
@@ -92,7 +96,49 @@ class CommandConsole {
 				''
 			).render('')
 		); // Display the command prompt
-		for (let i = 0; i < this.lines.length; i++) {
+
+		buffer.composite(
+			8,
+			buffer.height - this.historyDisplayLines,
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(this.currentLine.input ? '<|' : '|>'),
+				''
+			).render('')
+		); // Display the command prompt
+		buffer.composite(
+			10,
+			buffer.height - this.historyDisplayLines,
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(
+					this.lines
+						.filter((val) => val.input)
+						[this.historyPosition].message.slice(this.scrollPosition)
+				),
+				''
+			).render(
+				this.currentLine.type === OUTPUT_TYPE.ERROR
+					? 'error'
+					: this.currentLine.type === OUTPUT_TYPE.WARNING
+					? 'warning'
+					: ''
+			)
+		); // Display the command prompt
+		buffer.composite(
+			10 + this.cursorPosition - this.scrollPosition,
+			buffer.height - this.historyDisplayLines,
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(this.currentLine.message[this.cursorPosition] ?? ' '),
+				''
+			).render('commandCursor')
+		); // Display the command prompt
+
+		for (let i = 1; i < Math.min(this.lines.length, this.historyDisplayLines); i++) {
 			const currentLine = this.lines[i];
 			buffer.composite(
 				8,
@@ -110,7 +156,7 @@ class CommandConsole {
 				new TextBox(
 					new BindableInt(0),
 					new BindableInt(0),
-					new BindableString(currentLine.message),
+					new BindableString(currentLine.message.slice(this.scrollPosition)),
 					''
 				).render(
 					currentLine.type === OUTPUT_TYPE.ERROR
@@ -120,24 +166,12 @@ class CommandConsole {
 						: ''
 				)
 			); // Display the command prompt
-			if (i === 0 && ModeManager.mode === Modes.COMMAND) {
-				buffer.composite(
-					10 + this.cursorPosition,
-					buffer.height - (this.historyDisplayLines - i),
-					new TextBox(
-						new BindableInt(0),
-						new BindableInt(0),
-						new BindableString(currentLine.message[this.cursorPosition] ?? ' '),
-						''
-					).render('commandCursor')
-				); // Display the command prompt
-			}
 		}
 
 		if (
 			this.lines.length > 0 &&
-			this.lines[this.historyPosition]?.message !== undefined &&
-			this.lines[this.historyPosition].message.length > 0
+			this.currentLine?.message !== undefined &&
+			this.currentLine.message.length > 0
 		) {
 			this.currentAutofill = this.getAutofillOptions();
 		} else {
@@ -153,7 +187,7 @@ class CommandConsole {
 				}
 			}
 			buffer.composite(
-				this.lines[this.historyPosition].message.lastIndexOf(' ') + 9,
+				this.currentLine.message.lastIndexOf(' ') + 9,
 				buffer.height - this.currentAutofill.length - this.historyDisplayLines,
 				new TextBox(
 					new BindableInt(0),
@@ -174,22 +208,16 @@ class CommandConsole {
 	 */
 	addLine(message: string, type: OUTPUT_TYPE) {
 		this.lines.unshift(new ConsoleLine(message, type, false));
-		this.lines = this.lines.slice(0, this.historyDisplayLines);
 	}
 
 	/**
 	 * Adds a new blank input line to the console if there isn't one already.
 	 */
 	open() {
-		if (
-			this.lines.length !== 0 &&
-			this.lines[this.historyPosition].message === '' &&
-			this.lines[this.historyPosition].input
-		) {
+		if (this.lines.length !== 0 && this.lines[0].message === '' && this.lines[0].input) {
 			this.lines.shift();
 		}
 		this.lines.unshift(new ConsoleLine('', OUTPUT_TYPE.NORMAL, true));
-		this.lines = this.lines.slice(0, this.historyDisplayLines);
 		this.cursorPosition = 0;
 	}
 
@@ -197,9 +225,8 @@ class CommandConsole {
 	 * Clears any content in the bottom row of the console, if that row in an input row.
 	 */
 	close() {
-		if (!this.lines[this.historyPosition].input) {
-			return;
-		}
+		this.historyPosition = 0;
+		this.cursorPosition = 0;
 		this.lines.shift();
 		this.lines.unshift(new ConsoleLine('', OUTPUT_TYPE.NORMAL, true));
 	}
@@ -210,17 +237,14 @@ class CommandConsole {
 	 */
 	input(key: string) {
 		if (key.length === 1) {
-			if (this.historyPosition !== 0) {
-				console.log(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
-				this.lines.unshift(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
-				this.lines.slice(0, this.historyLength);
-				this.historyPosition = 0;
-			}
+			// if (this.historyPosition !== 0) {
+			// 	console.log(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
+			// 	this.lines.unshift(this.lines[Math.min(this.historyPosition, this.lines.length - 1)]);
+			// 	this.lines.shift();
+			// 	this.historyPosition = 0;
+			// }
 			this.addChar(key, this.cursorPosition);
-			this.cursorPosition = Math.min(
-				this.cursorPosition + 1,
-				this.lines[this.historyPosition].message.length
-			);
+			this.cursorPosition = Math.min(this.cursorPosition + 1, this.currentLine.message.length);
 			if (key === '"') {
 				this.addChar('"', this.cursorPosition);
 			} else if (key === '(') {
@@ -234,27 +258,27 @@ class CommandConsole {
 			this.run();
 			ModeManager.setMode(Modes.VIEW_MODE);
 		} else if (keymap.moveCursorUp.includes(key)) {
-			if (this.lines[this.historyPosition].message.length === 0) {
-				this.historyPosition = Math.max(this.historyPosition + 1, this.lines.length - 1);
+			if (this.currentLine.message.length === 0 || this.historyPosition !== 0) {
+				this.historyPosition = Math.min(
+					this.historyPosition + 1,
+					this.lines.filter((val) => val.input).length - 1
+				);
 			} else {
-				this.autofillPosition = Math.max(
+				this.autofillPosition = Math.max(this.autofillPosition - 1, 0);
+			}
+		} else if (keymap.moveCursorDown.includes(key)) {
+			if (this.currentLine.message.length === 0 || this.historyPosition !== 0) {
+				this.historyPosition = Math.max(this.historyPosition - 1, 0);
+			} else {
+				this.autofillPosition = Math.min(
 					this.autofillPosition + 1,
 					this.currentAutofill.length - 1
 				);
 			}
-		} else if (keymap.moveCursorDown.includes(key)) {
-			if (this.lines[this.historyPosition].message.length === 0) {
-				this.historyPosition = Math.min(this.historyPosition - 1, 0);
-			} else {
-				this.autofillPosition = Math.min(this.autofillPosition - 1, 0);
-			}
 		} else if (keymap.moveCursorLeft.includes(key)) {
 			this.cursorPosition = Math.max(this.cursorPosition - 1, 0);
 		} else if (keymap.moveCursorRight.includes(key)) {
-			this.cursorPosition = Math.min(
-				this.cursorPosition + 1,
-				this.lines[this.historyPosition].message.length
-			);
+			this.cursorPosition = Math.min(this.cursorPosition + 1, this.currentLine.message.length);
 		} else if (key === 'Tab') {
 			this.applyAutofill();
 		}
@@ -266,11 +290,13 @@ class CommandConsole {
 	 * @param index The index to add it at
 	 */
 	addChar(char: string, index: number) {
-		if (this.lines[this.historyPosition].input) {
-			this.lines[this.historyPosition].message =
-				this.lines[this.historyPosition].message.slice(0, index) +
-				char +
-				this.lines[this.historyPosition].message.slice(index);
+		if (this.historyPosition !== 0) {
+			this.lines[0] = structuredClone(this.currentLine);
+			this.historyPosition = 0;
+		}
+		if (this.lines[0].input) {
+			this.lines[0].message =
+				this.lines[0].message.slice(0, index) + char + this.lines[0].message.slice(index);
 		}
 	}
 
@@ -279,10 +305,13 @@ class CommandConsole {
 	 * @param index The index of the character to delete
 	 */
 	deleteChar(index: number) {
-		if (this.lines[this.historyPosition].input) {
-			this.lines[this.historyPosition].message =
-				this.lines[this.historyPosition].message.slice(0, Math.max(0, index - 1)) +
-				this.lines[this.historyPosition].message.slice(index);
+		if (this.historyPosition !== 0) {
+			this.lines[0] = structuredClone(this.currentLine);
+			this.historyPosition = 0;
+		}
+		if (this.lines[0].input) {
+			this.lines[0].message =
+				this.lines[0].message.slice(0, Math.max(0, index - 1)) + this.lines[0].message.slice(index);
 		}
 	}
 
@@ -291,7 +320,10 @@ class CommandConsole {
 	 */
 	run() {
 		try {
-			const output = parseExpression(this.lines[this.historyPosition].message);
+			const output = parseExpression(this.currentLine.message);
+			if (this.historyPosition !== 0) {
+				this.lines[0] = this.currentLine;
+			}
 			this.addLine(
 				`(${STATIC_TYPES[output instanceof Command ? 'COMMAND' : output.type]}) ${
 					output instanceof Command ? output.string : output.value
@@ -337,7 +369,7 @@ class CommandConsole {
 	 * @returns A list of values for the currently edited token
 	 */
 	getAutofillOptions() {
-		const start = this.lines[this.historyPosition].message ?? '';
+		const start = this.currentLine.message ?? '';
 		let possibilities: string[] = [];
 		const tokens = this.tokenizeExpression(start);
 		this.currentTokens = tokens;
@@ -442,8 +474,12 @@ class CommandConsole {
 		console.log(newToken);
 		this.currentTokens.pop();
 		this.currentTokens.push(newToken);
-		this.lines[this.historyPosition].message = ':' + this.currentTokens.join(' ');
-		this.cursorPosition = this.lines[this.historyPosition].message.length;
+		this.currentLine.message = ':' + this.currentTokens.join(' ');
+		this.cursorPosition = this.currentLine.message.length;
+	}
+
+	get currentLine() {
+		return this.lines.filter((val) => val.input)[this.historyPosition];
 	}
 }
 
