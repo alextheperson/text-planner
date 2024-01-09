@@ -107,3 +107,10 @@ new CommandDefinition('splice')
 		STATIC_TYPES.INT
 	)
 	.register();
+
+new CommandDefinition('length')
+	.addOverride((params) => {
+		const string = params[0].value as string;
+		return new Value(string.length, STATIC_TYPES.INT);
+	}, STATIC_TYPES.STRING)
+	.register();
