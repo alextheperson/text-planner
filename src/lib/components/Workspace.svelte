@@ -37,6 +37,8 @@
 		ModeManager.currentMode.click(e);
 		wp.characterWidth = getTextWidth('M', '16px Fira Code');
 		wp.characterHeight = 20;
+		wp.canvasWidth = Math.floor(window.innerWidth / wp.characterWidth);
+		wp.canvasHeight = Math.floor(window.innerHeight / wp.characterHeight);
 	}
 
 	function keydown(e: KeyboardEvent) {
