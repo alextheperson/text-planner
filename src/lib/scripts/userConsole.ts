@@ -126,6 +126,7 @@ class CommandConsole {
 					: ''
 			)
 		); // Display the command prompt
+
 		buffer.composite(
 			10 + this.cursorPosition - this.scrollPosition,
 			buffer.height - this.historyDisplayLines,
@@ -136,6 +137,19 @@ class CommandConsole {
 				''
 			).render('commandCursor')
 		); // Display the command prompt
+		const parenPairedWithCursor = this.pairedParenthesis();
+		if (parenPairedWithCursor !== -1) {
+			buffer.composite(
+				10 + parenPairedWithCursor - this.scrollPosition,
+				buffer.height - this.historyDisplayLines,
+				new TextBox(
+					new BindableInt(0),
+					new BindableInt(0),
+					new BindableString(this.currentLine.message[parenPairedWithCursor] ?? ' '),
+					''
+				).render('selected')
+			); // Display the command prompt
+		}
 
 		for (let i = 1; i < Math.min(this.lines.length, this.historyDisplayLines); i++) {
 			const currentLine = this.lines[i];
@@ -206,7 +220,7 @@ class CommandConsole {
 	 * @param type
 	 */
 	addLine(message: string, type: OUTPUT_TYPE) {
-		if (this.lines[0].message === '' && this.lines[0].input) {
+		if (this.currentLine.message === '' && this.currentLine.input) {
 			this.lines.shift();
 		}
 		this.lines.unshift(new ConsoleLine(message, type, false));
@@ -346,7 +360,11 @@ class CommandConsole {
 
 		for (let i = 0; i < expr.length; i++) {
 			currentToken += expr[i];
-			if (expr[i] === "'" && expr[i - 1] !== '\\') {
+			if (
+				this.currentLine.message[i] === '"' &&
+				this.currentLine.message[i - 1] !== '\\' &&
+				this.currentLine.message[i - 2] !== '\\'
+			) {
 				inQuotes = !inQuotes;
 			}
 			if ((expr[i] === ' ' && !inQuotes) || i === expr.length - 1) {
@@ -475,6 +493,55 @@ class CommandConsole {
 
 	get currentLine() {
 		return this.lines.filter((val) => val.input)[this.historyPosition];
+	}
+
+	pairedParenthesis() {
+		if (this.currentLine.message[this.cursorPosition] === '(') {
+			let parenLevel = 0;
+			let inQuotes = false;
+
+			for (let i = this.cursorPosition; i < this.currentLine.message.length; i++) {
+				if (
+					this.currentLine.message[i] === '"' &&
+					this.currentLine.message[i - 1] !== '\\' &&
+					this.currentLine.message[i - 2] !== '\\'
+				) {
+					inQuotes = !inQuotes;
+				}
+				if (this.currentLine.message[i] === '(' && !inQuotes) {
+					parenLevel += 1;
+				}
+				if (this.currentLine.message[i] === ')' && !inQuotes) {
+					parenLevel -= 1;
+				}
+				if (this.currentLine.message[i] === ')' && parenLevel === 0 && !inQuotes) {
+					return i;
+				}
+			}
+		} else if (this.currentLine.message[this.cursorPosition] === ')') {
+			let parenLevel = 0;
+			let inQuotes = false;
+
+			for (let i = this.cursorPosition; i >= 0; i--) {
+				if (
+					this.currentLine.message[i] === '"' &&
+					this.currentLine.message[i - 1] !== '\\' &&
+					this.currentLine.message[i - 2] !== '\\'
+				) {
+					inQuotes = !inQuotes;
+				}
+				if (this.currentLine.message[i] === ')' && !inQuotes) {
+					parenLevel += 1;
+				}
+				if (this.currentLine.message[i] === '(' && !inQuotes) {
+					parenLevel -= 1;
+				}
+				if (this.currentLine.message[i] === '(' && parenLevel === 0 && !inQuotes) {
+					return i;
+				}
+			}
+		}
+		return -1;
 	}
 }
 
