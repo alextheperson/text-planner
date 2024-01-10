@@ -129,21 +129,21 @@ export function parseExpression(expression: string): Value | Command {
 			throw new Error(`No shape exists at ${exp.slice(1).split(',')}`);
 		}
 		return new Value(shape, STATIC_TYPES.SHAPE);
-	} else if (exp.match(/^@[0-9]+$/)) {
+	} else if (exp.match(/^@i[0-9]+$/)) {
 		// Match the shape with that index
-		if (parseInt(exp.slice(1)) > ws.elements.length) {
+		if (parseInt(exp.slice(2)) >= ws.elements.length) {
 			throw new Error(
-				`There is no shape at index ${parseInt(exp.slice(1))}. There are only ${
+				`There is no shape at index ${parseInt(exp.slice(2))}. There are only ${
 					ws.elements.length
 				} shapes(s)`
 			);
 		}
-		return new Value(ws.elements[parseInt(exp.slice(1))], STATIC_TYPES.SHAPE);
-	} else if (exp.match(/^@i[a-zA-Z0-9-]+$/)) {
+		return new Value(ws.elements[parseInt(exp.slice(2))], STATIC_TYPES.SHAPE);
+	} else if (exp.match(/^@[a-zA-Z0-9-]+$/)) {
 		// Match the shape wth that id
-		const shape = ws.elements.filter((val) => val.id === exp.slice(2)).at(0);
+		const shape = ws.elements.filter((val) => val.id === exp.slice(1)).at(0);
 		if (shape === undefined) {
-			throw new Error(`There is no shape with the id '${exp.slice(2)}'`);
+			throw new Error(`There is no shape with the id '${exp.slice(1)}'`);
 		}
 		return new Value(shape, STATIC_TYPES.SHAPE);
 	}
