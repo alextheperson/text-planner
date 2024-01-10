@@ -208,7 +208,7 @@ export class PrefixedLine implements Shape {
 
 	move(cursorX: number, cursorY: number, deltaX: number, deltaY: number) {
 		this.positionX.value += deltaX;
-		this.positionY.value + deltaY;
+		this.positionY.value += deltaY;
 		wp.moveCursor(deltaX, deltaY);
 	}
 
