@@ -96,7 +96,7 @@
 	style:left={cursorX + 'px'}
 	style:top={cursorY + 'px'}
 	style:width={wp.characterWidth + 'px'}
-	style:height={wp.characterHeight + 'px'}
+	style:height={wp.characterHeight + 1.5 + 'px'}
 />
 
 <style lang="scss">
