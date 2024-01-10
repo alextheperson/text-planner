@@ -122,7 +122,6 @@ export class BindableInt implements BindableValue {
 			try {
 				const result = this.command.execute();
 				if (typeof result.value === 'number' && result.type === STATIC_TYPES.INT) {
-					console.log('Evaluated command. Got', result.value);
 					return result.value;
 				}
 			} catch {

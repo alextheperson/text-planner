@@ -25,8 +25,6 @@ export class Command {
 	}
 
 	execute(): Value {
-		console.log('name:', this.name);
-		console.log('params: ', this.parameters);
 		return this.pattern.implementation(
 			this.parameters.map((val) => {
 				if (val instanceof Command) {
@@ -72,8 +70,6 @@ export function parseExpression(expression: string): Value | Command {
 				parenthesisLayers = 0;
 			}
 		}
-
-		console.log(tokens);
 
 		return new Command(
 			tokens[0],

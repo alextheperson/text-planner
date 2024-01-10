@@ -3,23 +3,15 @@ import { Modes } from '../modes';
 import { Button } from '../shapes/button';
 import { Bookmark } from '../shapes/bookmark';
 import { wp } from '$lib/components/stores';
-import { Command, CommandDefinition, CommandOutput, OUTPUT_TYPE } from '../commands';
+import { Command, CommandDefinition, OUTPUT_TYPE } from '../commands';
 import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
-
-console.log('registered');
+import { UserConsole } from '../userConsole';
 
 new CommandDefinition('log')
 	.addOverride((params) => {
-		ws.currentOutput = new CommandOutput(params[0].value as string, OUTPUT_TYPE.NORMAL);
-		return new Value(null, STATIC_TYPES.NULL);
-	}, STATIC_TYPES.STRING)
-	.addOverride((params) => {
-		ws.currentOutput = new CommandOutput(
-			(params[0].value as number).toString(),
-			OUTPUT_TYPE.NORMAL
-		);
-		return new Value((params[0].value as number).toString(), STATIC_TYPES.STRING);
-	}, STATIC_TYPES.FLOAT)
+		UserConsole.addLine(params[0].value as string, OUTPUT_TYPE.NORMAL);
+		return params[0];
+	}, STATIC_TYPES.ANY)
 	.register();
 
 new CommandDefinition('save')

@@ -8,7 +8,6 @@ import { workspace as ws } from '../workspace';
 new CommandDefinition('del')
 	.addOverride((params) => {
 		(params[0].value as Shape).shouldRemove = true;
-		console.log(params[0].value);
 		ws.cullElements();
 		// `Deleted the ${elementName} at position (${elementPosition.x}, ${elementPosition.y})`
 

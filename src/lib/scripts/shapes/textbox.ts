@@ -178,7 +178,6 @@ export class TextBox implements Shape {
 			if (this.isOn(cursorX, cursorY)) {
 				this.addCharAt(event.key, positionInText);
 			} else {
-				console.log('new textbox');
 				const newText = new TextBox(
 					new BindableInt(cursorX),
 					new BindableInt(cursorY),

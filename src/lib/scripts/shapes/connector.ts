@@ -75,8 +75,6 @@ export class Connector extends Line implements Shape {
 		id: string
 	) {
 		super(startX, startY, endX, endY, id);
-
-		console.log(startX, startY, endX, endY);
 	}
 
 	override render(className: string) {

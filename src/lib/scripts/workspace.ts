@@ -184,9 +184,7 @@ class Workspace {
 	cullElements() {
 		for (let i = 0; i < this.elements.length; i++) {
 			if (this.elements[i].shouldRemove) {
-				console.log(this.elements[i]);
 				this.elements.splice(i, 1);
-				console.log(this.elements, i);
 				i -= 1; //since we just deleted an element
 			}
 		}

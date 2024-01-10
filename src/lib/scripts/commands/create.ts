@@ -33,7 +33,6 @@ new CommandDefinition('new')
 					ws.getId()
 				)
 			);
-			console.log('abc');
 			// `New TextBox created at (${ws.cursorX}, ${ws.cursorY}) with the content '${params[1].parsed.toString()}'`
 			return new Value(null, STATIC_TYPES.NULL);
 		},
@@ -90,7 +89,6 @@ new CommandDefinition('new')
 	}, ['connector'])
 	.addOverride(
 		(params) => {
-			console.log(params[1].value);
 			ws.elements.push(
 				new Connector(
 					new BindableInt(params[1].value as number),
