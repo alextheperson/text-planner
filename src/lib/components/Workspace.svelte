@@ -29,10 +29,14 @@
 	function setViewSize() {
 		wp.canvasWidth = Math.floor(window.innerWidth / wp.characterWidth);
 		wp.canvasHeight = Math.floor(window.innerHeight / wp.characterHeight);
+		wp.characterWidth = getTextWidth('M', '16px Fira Code');
+		wp.characterHeight = 20;
 	}
 
 	function click(e: MouseEvent) {
 		ModeManager.currentMode.click(e);
+		wp.characterWidth = getTextWidth('M', '16px Fira Code');
+		wp.characterHeight = 20;
 	}
 
 	function keydown(e: KeyboardEvent) {
