@@ -206,7 +206,11 @@ class CommandConsole {
 	 * @param type
 	 */
 	addLine(message: string, type: OUTPUT_TYPE) {
+		if (this.lines[0].message === '' && this.lines[0].input) {
+			this.lines.shift();
+		}
 		this.lines.unshift(new ConsoleLine(message, type, false));
+		this.open();
 	}
 
 	/**
