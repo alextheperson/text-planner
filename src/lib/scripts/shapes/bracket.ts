@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
 import {
@@ -11,6 +10,7 @@ import {
 	Binding
 } from '../dataType';
 import { keymap } from '../keymap';
+import { workspace as ws } from '../workspace';
 import { Shape, Side, type SerializedShape, type Bindings } from './shape';
 
 export enum BracketType {
@@ -210,7 +210,7 @@ export default class Bracket implements Shape {
 			if (this.height.value - deltaY >= 2) {
 				this.positionY.value += deltaY;
 				this.height.value -= deltaY;
-				wp.moveCursor(deltaX, deltaY);
+				ws.currentDocument.moveCursor(deltaX, deltaY);
 			} else {
 				return;
 			}
@@ -220,13 +220,13 @@ export default class Bracket implements Shape {
 		) {
 			if (this.height.value + deltaY >= 2) {
 				this.height.value += deltaY;
-				wp.moveCursor(deltaX, deltaY);
+				ws.currentDocument.moveCursor(deltaX, deltaY);
 			} else {
 				return;
 			}
 		} else {
 			this.positionY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
+			ws.currentDocument.moveCursor(deltaX, deltaY);
 		}
 	}
 

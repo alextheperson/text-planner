@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
 import {
@@ -12,6 +11,7 @@ import {
 	Binding
 } from '../dataType';
 import { keymap } from '../keymap';
+import { workspace as ws } from '../workspace';
 import type { Bindings, SerializedShape, Shape } from './shape';
 
 export class PrefixedLine implements Shape {
@@ -164,7 +164,7 @@ export class PrefixedLine implements Shape {
 	}
 
 	input(cursorX: number, cursorY: number, event: KeyboardEvent): boolean {
-		const positionInText = this.getIndex(wp.cursorX, wp.cursorY);
+		const positionInText = this.getIndex(ws.currentDocument.cursorX, ws.currentDocument.cursorY);
 		if (event.key == 'Backspace') {
 			this.deleteAt(positionInText);
 			if (this.content.value === '') {
@@ -176,22 +176,22 @@ export class PrefixedLine implements Shape {
 			return true;
 		} else if (keymap.moveCursorUp.includes(event.key)) {
 			if (this.isOnText(cursorX, cursorY - 1)) {
-				wp.moveCursor(0, -1);
+				ws.currentDocument.moveCursor(0, -1);
 			}
 			return true;
 		} else if (keymap.moveCursorDown.includes(event.key)) {
 			if (this.isOnText(cursorX, cursorY + 1)) {
-				wp.moveCursor(0, 1);
+				ws.currentDocument.moveCursor(0, 1);
 			}
 			return true;
 		} else if (keymap.moveCursorLeft.includes(event.key)) {
 			if (this.isOnText(cursorX - 1, cursorY)) {
-				wp.moveCursor(-1, 0);
+				ws.currentDocument.moveCursor(-1, 0);
 			}
 			return true;
 		} else if (keymap.moveCursorRight.includes(event.key)) {
 			if (this.isOnText(cursorX + 1, cursorY)) {
-				wp.moveCursor(1, 0);
+				ws.currentDocument.moveCursor(1, 0);
 			}
 			return true;
 		}
@@ -199,8 +199,9 @@ export class PrefixedLine implements Shape {
 	}
 
 	updateCursorPosition(offset: number): void {
-		const positionInText = this.getIndex(wp.cursorX, wp.cursorY) + offset;
-		wp.setCursorCoords(
+		const positionInText =
+			this.getIndex(ws.currentDocument.cursorX, ws.currentDocument.cursorY) + offset;
+		ws.currentDocument.setCursorCoords(
 			this.positionX.value + positionInText + offset + this.prefix.value.length - 1,
 			this.positionY.value
 		);
@@ -209,7 +210,7 @@ export class PrefixedLine implements Shape {
 	move(cursorX: number, cursorY: number, deltaX: number, deltaY: number) {
 		this.positionX.value += deltaX;
 		this.positionY.value += deltaY;
-		wp.moveCursor(deltaX, deltaY);
+		ws.currentDocument.moveCursor(deltaX, deltaY);
 	}
 
 	interact(cursorX: number, cursorY: number, event: KeyboardEvent): boolean {

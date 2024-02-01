@@ -4,6 +4,7 @@ import { BindableInt, BindableString, STATIC_TYPES, Value } from './dataType';
 import { keymap } from './keymap';
 import ModeManager, { Modes } from './modes';
 import { TextBox } from './shapes/textbox';
+import { workspace as ws } from './workspace';
 
 /**
  * Represents a line in the console.
@@ -75,13 +76,13 @@ class CommandConsole {
 		const buffer = new Buffer(width, height, '');
 
 		let modeString = `|-????-|`;
-		if (ModeManager.mode === Modes.VIEW_MODE) {
+		if (ws.currentDocument.modeManager.mode === Modes.VIEW_MODE) {
 			modeString = `|-VIEW-|`;
-		} else if (ModeManager.mode === Modes.EDIT_MODE) {
+		} else if (ws.currentDocument.modeManager.mode === Modes.EDIT_MODE) {
 			modeString = `|-EDIT-|`;
-		} else if (ModeManager.mode === Modes.MOVE_MODE) {
+		} else if (ws.currentDocument.modeManager.mode === Modes.MOVE_MODE) {
 			modeString = `|-MOVE-|`;
-		} else if (ModeManager.mode === Modes.COMMAND) {
+		} else if (ws.currentDocument.modeManager.mode === Modes.COMMAND) {
 			modeString = `|-CMND-|`;
 		}
 
@@ -190,7 +191,7 @@ class CommandConsole {
 		} else {
 			this.currentAutofill = [];
 		}
-		if (ModeManager.mode === Modes.COMMAND && this.currentAutofill.length > 0) {
+		if (ws.currentDocument.modeManager.mode === Modes.COMMAND && this.currentAutofill.length > 0) {
 			let optionString = '';
 			for (let i = 0; i < this.currentAutofill.length; i++) {
 				if (this.autofillPosition === i) {
@@ -267,7 +268,7 @@ class CommandConsole {
 			this.cursorPosition = Math.max(this.cursorPosition - 1, 0);
 		} else if (keymap.confirm.includes(key)) {
 			this.run();
-			ModeManager.setMode(Modes.VIEW_MODE);
+			ws.currentDocument.modeManager.setMode(Modes.VIEW_MODE);
 		} else if (keymap.moveCursorUp.includes(key)) {
 			if (this.currentLine.message.length === 0 || this.historyPosition !== 0) {
 				this.historyPosition = Math.min(

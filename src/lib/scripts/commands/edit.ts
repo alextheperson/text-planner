@@ -89,7 +89,7 @@ new CommandDefinition('border')
 						`(:floor (:add (:get @i${selected.id} "position/y") (:get @i${selected.id} "size/height")))`
 					) as Command
 				);
-			ws.elements.push(rect);
+			ws.currentDocument.elements.push(rect);
 			// `Put ${ws.selected.position.x + ws.selected.size.x}x${ws.selected.position.y + ws.selected.size.y} Rectangle around the selected TextBox`,
 		}
 		//CommandOutput(`No TextBox was selected`, OutputType.ERROR);

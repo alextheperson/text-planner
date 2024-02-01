@@ -1,49 +1,44 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
-	import { wp, display } from './stores';
 	import { workspace as ws } from '$lib/scripts/workspace';
-	import ModeManager from '$lib/scripts/modes';
 
-	let displayString: string;
-	let cursorX = 0;
-	let cursorY = 0;
 	let testCanvas: HTMLCanvasElement | undefined;
 
-	display.subscribe((value) => (displayString = value));
-
-	wp.subscribe(() => {
-		cursorX = (wp.cursorX - wp.canvasX) * wp.characterWidth;
-		cursorY = (wp.cursorY - wp.canvasY) * wp.characterHeight;
-	});
+	let workspace: HTMLElement | null;
+	let cursor: HTMLElement | null;
 
 	onMount(() => {
 		if (browser) {
-			wp.characterWidth = getTextWidth('M', '16px Fira Code');
-			wp.characterHeight = 20;
+			workspace = document.getElementById('workspace');
+			cursor = document.getElementById('cursor');
+			ws.characterWidth = getTextWidth('M', '16px Fira Code');
+			ws.characterHeight = 20;
 			window.addEventListener('resize', setViewSize);
 		}
 		setViewSize();
+		ws.subscribe(render);
+		ws.render();
 	});
 
 	function setViewSize() {
-		wp.canvasWidth = Math.floor(window.innerWidth / wp.characterWidth);
-		wp.canvasHeight = Math.floor(window.innerHeight / wp.characterHeight);
-		wp.characterWidth = getTextWidth('M', '16px Fira Code');
-		wp.characterHeight = 20;
+		ws.canvasWidth = Math.floor(window.innerWidth / ws.characterWidth);
+		ws.canvasHeight = Math.floor(window.innerHeight / ws.characterHeight);
+		ws.characterWidth = getTextWidth('M', '16px Fira Code');
+		ws.characterHeight = 20;
 	}
 
 	function click(e: MouseEvent) {
-		ModeManager.currentMode.click(e);
-		wp.characterWidth = getTextWidth('M', '16px Fira Code');
-		wp.characterHeight = 20;
-		wp.canvasWidth = Math.floor(window.innerWidth / wp.characterWidth);
-		wp.canvasHeight = Math.floor(window.innerHeight / wp.characterHeight);
+		ws.currentDocument.modeManager.currentMode.click(e);
+		ws.characterWidth = getTextWidth('M', '16px Fira Code');
+		ws.characterHeight = 20;
+		ws.canvasWidth = Math.floor(window.innerWidth / ws.characterWidth);
+		ws.canvasHeight = Math.floor(window.innerHeight / ws.characterHeight);
 	}
 
 	function keydown(e: KeyboardEvent) {
 		if (!e.metaKey) {
-			ModeManager.currentMode.input(e);
+			ws.currentDocument.modeManager.currentMode.input(e);
 
 			e.preventDefault();
 		}
@@ -58,6 +53,17 @@
 			});
 			keydown(event);
 		}
+	}
+
+	function render(screen: string) {
+		if (workspace === null || cursor === null) {
+			return;
+		}
+		workspace.innerHTML = screen;
+		cursor.style.left = (ws.currentDocument.cursorX - ws.canvasX) * ws.characterWidth + 'px';
+		cursor.style.top = (ws.currentDocument.cursorY - ws.canvasY) * ws.characterHeight + 'px';
+		cursor.style.width = ws.characterWidth + 'px';
+		cursor.style.height = ws.characterHeight + 1.5 + 'px';
 	}
 
 	/**
@@ -81,23 +87,16 @@
 <svelte:window on:click={click} on:keydown={keydown} on:paste={paste} />
 <div
 	class="background-fill"
-	style:height={wp.canvasHeight * wp.characterHeight + 'px'}
-	style:width={wp.canvasWidth * wp.characterWidth + 'px'}
+	style:height={ws.canvasHeight * ws.characterHeight + 'px'}
+	style:width={ws.canvasWidth * ws.characterWidth + 'px'}
 />
 <div
 	class="background"
-	style:background-size="{wp.characterWidth}px {wp.characterHeight}px"
-	style:transform="translate(-{wp.characterWidth / 2}px, -{wp.characterHeight / 2}px)"
+	style:background-size="{ws.characterWidth}px {ws.characterHeight}px"
+	style:transform="translate(-{ws.characterWidth / 2}px, -{ws.characterHeight / 2}px)"
 />
-<pre class="workspace">{@html displayString}</pre>
-
-<div
-	class="cursor"
-	style:left={cursorX + 'px'}
-	style:top={cursorY + 'px'}
-	style:width={wp.characterWidth + 'px'}
-	style:height={wp.characterHeight + 1.5 + 'px'}
-/>
+<pre class="workspace" id="workspace" />
+<div class="cursor" id="cursor" />
 
 <style lang="scss">
 	.workspace {

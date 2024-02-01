@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
 import {
@@ -160,7 +159,7 @@ export class TextBox implements Shape {
 	}
 
 	input(cursorX: number, cursorY: number, event: KeyboardEvent) {
-		const positionInText = this.getIndex(wp.cursorX, wp.cursorY);
+		const positionInText = this.getIndex(ws.currentDocument.cursorX, ws.currentDocument.cursorY);
 		if (this.content.value !== '') {
 			this.shouldRemove = false;
 		}
@@ -184,29 +183,29 @@ export class TextBox implements Shape {
 					new BindableString(event.key),
 					ws.getId()
 				);
-				ws.elements.push(newText);
-				ws.selected = newText;
-				wp.moveCursor(1, 0);
+				ws.currentDocument.elements.push(newText);
+				ws.currentDocument.selected = newText;
+				ws.currentDocument.moveCursor(1, 0);
 			}
 			return true;
 		} else if (keymap.moveCursorUp.includes(event.key)) {
 			if (this.isOn(cursorX, cursorY - 1)) {
-				wp.moveCursor(0, -1);
+				ws.currentDocument.moveCursor(0, -1);
 			}
 			return true;
 		} else if (keymap.moveCursorDown.includes(event.key)) {
 			if (this.isOn(cursorX, cursorY + 1)) {
-				wp.moveCursor(0, 1);
+				ws.currentDocument.moveCursor(0, 1);
 			}
 			return true;
 		} else if (keymap.moveCursorLeft.includes(event.key)) {
 			if (this.isOn(cursorX - 1, cursorY)) {
-				wp.moveCursor(-1, 0);
+				ws.currentDocument.moveCursor(-1, 0);
 			}
 			return true;
 		} else if (keymap.moveCursorRight.includes(event.key)) {
 			if (this.isOn(cursorX + 1, cursorY)) {
-				wp.moveCursor(1, 0);
+				ws.currentDocument.moveCursor(1, 0);
 			}
 			return true;
 		}
@@ -218,8 +217,9 @@ export class TextBox implements Shape {
 	}
 
 	updateCursorPosition(offset: number) {
-		const positionInText = this.getIndex(wp.cursorX, wp.cursorY) + offset;
-		wp.setCursorCoords(
+		const positionInText =
+			this.getIndex(ws.currentDocument.cursorX, ws.currentDocument.cursorY) + offset;
+		ws.currentDocument.setCursorCoords(
 			this.positionX.value +
 				(this.content.value.slice(0, positionInText).split('\n').at(-1) ?? []).length,
 			this.positionY.value +
@@ -230,7 +230,7 @@ export class TextBox implements Shape {
 	move(cursorX: number, cursorY: number, deltaX: number, deltaY: number) {
 		this.positionX.value += deltaX;
 		this.positionY.value += deltaY;
-		wp.moveCursor(deltaX, deltaY);
+		ws.currentDocument.moveCursor(deltaX, deltaY);
 	}
 
 	static serialize(input: TextBox): SerializedShape {

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import type { Command } from '../commands';
 import {
@@ -11,6 +10,7 @@ import {
 	Binding,
 	type BindingList
 } from '../dataType';
+import { workspace as ws } from '../workspace';
 import type { Bindings, SerializedShape, Shape } from './shape';
 
 export class TwoPointShape implements Shape {
@@ -105,7 +105,7 @@ export class TwoPointShape implements Shape {
 			this.startX.value += deltaX;
 			this.startY.value += deltaY;
 		}
-		wp.moveCursor(deltaX, deltaY);
+		ws.currentDocument.moveCursor(deltaX, deltaY);
 		this.updateDimensions();
 	}
 

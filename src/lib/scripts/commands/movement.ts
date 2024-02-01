@@ -1,4 +1,3 @@
-import { wp } from '$lib/components/stores';
 import { CommandDefinition } from '../commands';
 import { STATIC_TYPES, Value } from '../dataType';
 import { Bookmark } from '../shapes/bookmark';
@@ -7,7 +6,7 @@ import { workspace as ws } from '../workspace';
 new CommandDefinition('goto')
 	.addOverride(
 		(params) => {
-			wp.setCursorCoords(params[0].value as number, params[1].value as number);
+			ws.currentDocument.setCursorCoords(params[0].value as number, params[1].value as number);
 			// `Cursor moved to (${params[0].parsed as number}, ${params[1].parsed as number})`
 			return new Value(null, STATIC_TYPES.NULL);
 		},
@@ -16,13 +15,16 @@ new CommandDefinition('goto')
 	)
 	.addOverride((params) => {
 		const targetName = params[0].value as string;
-		for (let i = 0; i < ws.elements.length; i++) {
-			const currentElement = ws.elements[i];
+		for (let i = 0; i < ws.currentDocument.elements.length; i++) {
+			const currentElement = ws.currentDocument.elements[i];
 			if (
 				currentElement instanceof Bookmark &&
 				currentElement.content.value.toLowerCase() == targetName.toLowerCase()
 			) {
-				wp.setCursorCoords(currentElement.positionX.value, currentElement.positionY.value);
+				ws.currentDocument.setCursorCoords(
+					currentElement.positionX.value,
+					currentElement.positionY.value
+				);
 				// `Moved cursor to the bookmark '${targetName}' at (${currentElement.position.x}, ${currentElement.position.y})`
 			}
 		}

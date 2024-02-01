@@ -1,4 +1,3 @@
-import { wp } from '$lib/components/stores';
 import { Command, parseExpression } from './commands';
 import { STATIC_TYPES, type Binding, Value } from './dataType';
 import { keymap } from './keymap';
@@ -23,25 +22,25 @@ enum ShapeTypes {
 
 function move(event: KeyboardEvent) {
 	if (keymap.moveViewUp.includes(event.key)) {
-		wp.moveCanvas(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
+		ws.moveCanvas(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
 		// wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1)));
 	} else if (keymap.moveViewDown.includes(event.key)) {
-		wp.moveCanvas(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
+		ws.moveCanvas(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
 		// wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1));
 	} else if (keymap.moveViewLeft.includes(event.key)) {
-		wp.moveCanvas(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
+		ws.moveCanvas(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
 		// wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0));
 	} else if (keymap.moveViewRight.includes(event.key)) {
-		wp.moveCanvas(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
+		ws.moveCanvas(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
 		// wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0));
 	} else if (keymap.moveCursorUp.includes(event.key)) {
-		wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
+		ws.currentDocument.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
 	} else if (keymap.moveCursorDown.includes(event.key)) {
-		wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
+		ws.currentDocument.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
 	} else if (keymap.moveCursorLeft.includes(event.key)) {
-		wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
+		ws.currentDocument.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
 	} else if (keymap.moveCursorRight.includes(event.key)) {
-		wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
+		ws.currentDocument.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
 	}
 }
 
@@ -55,8 +54,8 @@ interface Mode {
 class ViewMode implements Mode {
 	open() {
 		try {
-			ws.selected = ws.underCursor();
-			ws.drawScreen();
+			ws.currentDocument.selected = ws.underCursor();
+			ws.render();
 		} catch {
 			/* empty */
 		}
@@ -68,27 +67,32 @@ class ViewMode implements Mode {
 	input(event: KeyboardEvent) {
 		move(event);
 		if (keymap.select.includes(event.key) || keymap.editMode.includes(event.key)) {
-			ModeManager.setMode(Modes.EDIT_MODE);
+			ws.currentDocument.modeManager.setMode(Modes.EDIT_MODE);
 		} else if (keymap.moveMode.includes(event.key)) {
-			ModeManager.setMode(Modes.MOVE_MODE);
-			ws.selected = ws.elements[ws.elements.length - 1];
+			ws.currentDocument.modeManager.setMode(Modes.MOVE_MODE);
+			ws.currentDocument.selected =
+				ws.currentDocument.elements[ws.currentDocument.elements.length - 1];
 		} else if (event.key == ':') {
-			ModeManager.setMode(Modes.COMMAND);
-		} else if (ws.selected !== null) {
-			ws.selected.interact(wp.cursorX, wp.cursorY, event);
+			ws.currentDocument.modeManager.setMode(Modes.COMMAND);
+		} else if (ws.currentDocument.selected !== null) {
+			ws.currentDocument.selected.interact(
+				ws.currentDocument.cursorX,
+				ws.currentDocument.cursorY,
+				event
+			);
 		}
-		ws.selected = ws.underCursor();
+		ws.currentDocument.selected = ws.underCursor();
 		ws.activeBindings = [];
-		ws.drawScreen();
+		ws.render();
 	}
 
 	click(event: MouseEvent): void {
-		wp.setCursorCoords(
-			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
-			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
+		ws.currentDocument.setCursorCoords(
+			Math.floor(event.clientX / ws.characterWidth) + ws.canvasX,
+			Math.floor(event.clientY / ws.characterHeight) + ws.canvasY
 		);
-		ws.selected = ws.underCursor();
-		ws.drawScreen();
+		ws.currentDocument.selected = ws.underCursor();
+		ws.render();
 	}
 }
 
@@ -96,7 +100,7 @@ class MoveMode implements Mode {
 	willAutoBind = true;
 
 	open() {
-		ws.selected = ws.underCursor();
+		ws.currentDocument.selected = ws.underCursor();
 	}
 
 	close(): void {
@@ -110,15 +114,15 @@ class MoveMode implements Mode {
 		let deltaX = 0;
 		let deltaY = 0;
 		if (keymap.confirm.includes(event.key) || keymap.viewMode.includes(event.key)) {
-			ModeManager.setMode(Modes.VIEW_MODE);
+			ws.currentDocument.modeManager.setMode(Modes.VIEW_MODE);
 		} else if (keymap.moveViewUp.includes(event.key)) {
-			wp.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
+			ws.currentDocument.moveCursor(0, -(event.shiftKey ? FAST_MOVE_SPEED : 1));
 		} else if (keymap.moveViewDown.includes(event.key)) {
-			wp.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
+			ws.currentDocument.moveCursor(0, event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveViewLeft.includes(event.key)) {
-			wp.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
+			ws.currentDocument.moveCursor(-(event.shiftKey ? FAST_MOVE_SPEED : 1), 0);
 		} else if (keymap.moveViewRight.includes(event.key)) {
-			wp.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
+			ws.currentDocument.moveCursor(event.shiftKey ? FAST_MOVE_SPEED : 1, 0);
 		} else if (keymap.moveCursorUp.includes(event.key)) {
 			deltaY = -(event.shiftKey ? FAST_MOVE_SPEED : 1);
 		} else if (keymap.moveCursorDown.includes(event.key)) {
@@ -130,23 +134,27 @@ class MoveMode implements Mode {
 		} else if (keymap.cancel.includes(event.key)) {
 			this.willAutoBind = !this.willAutoBind;
 		}
-		ws.selected?.move(wp.cursorX, wp.cursorY, deltaX, deltaY);
+		ws.currentDocument.selected?.move(
+			ws.currentDocument.cursorX,
+			ws.currentDocument.cursorY,
+			deltaX,
+			deltaY
+		);
 		// move(event);
 		if (this.willAutoBind) {
 			ws.activeBindings = this.checkForBindings(false);
 		} else {
 			ws.activeBindings = [];
 		}
-		ws.drawScreen();
+		ws.render();
 	}
 
 	click(event: MouseEvent): void {
-		wp.setCursorCoords(
-			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
-			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
+		ws.currentDocument.setCursorCoords(
+			Math.floor(event.clientX / ws.characterWidth) + ws.canvasX,
+			Math.floor(event.clientY / ws.characterHeight) + ws.canvasY
 		);
-		ws.selected = ws.underCursor();
-		ws.drawScreen();
+		ws.render();
 	}
 
 	pairBindings(list: Binding[]) {
@@ -178,21 +186,23 @@ class MoveMode implements Mode {
 	}
 
 	checkForBindings(shouldBind: boolean) {
-		if (ws.selected === null) {
+		if (ws.currentDocument.selected === null) {
 			return [];
 		}
-		const availableBindings = ws.selected.bindings.filter(
+		const availableBindings = ws.currentDocument.selected.bindings.filter(
 			(val) => val.settable && (val.name.slice(-2) === '/x' || val.name.slice(-2) === '/y')
 		);
 		const pairedSelfBindings = this.pairBindings(availableBindings);
-		const shape = ws.elements
-			.filter((val) => val !== ws.selected)
+		const shape = ws.currentDocument.elements
+			.filter((val) => val !== ws.currentDocument.selected)
 			// get all shapes within 10units of the cursor
 			.sort((val1, val2) => {
 				return (
-					((wp.cursorX - val1.positionX.value) ** 2 + (wp.cursorY - val1.positionY.value) ** 2) **
+					((ws.currentDocument.cursorX - val1.positionX.value) ** 2 +
+						(ws.currentDocument.cursorY - val1.positionY.value) ** 2) **
 						0.5 -
-					((wp.cursorX - val2.positionX.value) ** 2 + (wp.cursorY - val2.positionY.value) ** 2) **
+					((ws.currentDocument.cursorX - val2.positionX.value) ** 2 +
+						(ws.currentDocument.cursorY - val2.positionY.value) ** 2) **
 						0.5
 				);
 			})
@@ -238,7 +248,7 @@ class MoveMode implements Mode {
 // }
 class EditMode implements Mode {
 	open() {
-		ws.drawScreen();
+		ws.render();
 	}
 
 	close() {
@@ -247,25 +257,35 @@ class EditMode implements Mode {
 
 	input(event: KeyboardEvent) {
 		if (keymap.viewMode.includes(event.key)) {
-			ModeManager.setMode(Modes.VIEW_MODE);
+			ws.currentDocument.modeManager.setMode(Modes.VIEW_MODE);
 			// ws.selectedType = ShapeTypes.NONE;
-		} else if (ws.selected !== null && !ws.selected.input(wp.cursorX, wp.cursorY, event)) {
+		} else if (
+			ws.currentDocument.selected !== null &&
+			!ws.currentDocument.selected.input(
+				ws.currentDocument.cursorX,
+				ws.currentDocument.cursorY,
+				event
+			)
+		) {
 			move(event);
 		}
 		ws.activeBindings = [];
-		ws.drawScreen();
+		ws.render();
 	}
 
 	click(event: MouseEvent): void {
-		wp.setCursorCoords(
-			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
-			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
+		ws.currentDocument.setCursorCoords(
+			Math.floor(event.clientX / ws.characterWidth) + ws.canvasX,
+			Math.floor(event.clientY / ws.characterHeight) + ws.canvasY
 		);
 		const hoveredElement = ws.underCursor();
-		if (ws.selected === null || hoveredElement instanceof ws.selected.constructor) {
-			ws.selected = hoveredElement;
+		if (
+			ws.currentDocument.selected === null ||
+			hoveredElement instanceof ws.currentDocument.selected.constructor
+		) {
+			ws.currentDocument.selected = hoveredElement;
 		}
-		ws.drawScreen();
+		ws.render();
 	}
 }
 
@@ -273,8 +293,7 @@ class CommandMode implements Mode {
 	open() {
 		UserConsole.open();
 		UserConsole.input(':');
-		ws.selected = ws.underCursor();
-		ws.drawScreen();
+		ws.render();
 	}
 
 	close() {
@@ -284,28 +303,27 @@ class CommandMode implements Mode {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	input(event: KeyboardEvent) {
 		if (keymap.viewMode.includes(event.key)) {
-			ModeManager.setMode(Modes.VIEW_MODE);
+			ws.currentDocument.modeManager.setMode(Modes.VIEW_MODE);
 		} else {
 			UserConsole.input(event.key);
 		}
-		ws.drawScreen();
+		ws.render();
 	}
 
 	click(event: MouseEvent): void {
-		wp.setCursorCoords(
-			Math.floor(event.clientX / wp.characterWidth) + wp.canvasX,
-			Math.floor(event.clientY / wp.characterHeight) + wp.canvasY
+		ws.currentDocument.setCursorCoords(
+			Math.floor(event.clientX / ws.characterWidth) + ws.canvasX,
+			Math.floor(event.clientY / ws.characterHeight) + ws.canvasY
 		);
-		ws.drawScreen();
-		ws.selected = ws.underCursor();
+		ws.render();
 	}
 }
 
 class ModeManager {
-	static currentMode: Mode = new ViewMode();
-	static mode: Modes = Modes.VIEW_MODE;
+	currentMode: Mode = new ViewMode();
+	mode: Modes = Modes.VIEW_MODE;
 
-	static setMode(setTo: Modes) {
+	setMode(setTo: Modes) {
 		if (!ws.allowedModes.includes(setTo)) {
 			return;
 		}
@@ -313,16 +331,16 @@ class ModeManager {
 		this.mode = setTo;
 		switch (setTo) {
 			case Modes.VIEW_MODE:
-				ModeManager.currentMode = new ViewMode();
+				this.currentMode = new ViewMode();
 				break;
 			case Modes.MOVE_MODE:
-				ModeManager.currentMode = new MoveMode();
+				this.currentMode = new MoveMode();
 				break;
 			case Modes.EDIT_MODE:
-				ModeManager.currentMode = new EditMode();
+				this.currentMode = new EditMode();
 				break;
 			case Modes.COMMAND:
-				ModeManager.currentMode = new CommandMode();
+				this.currentMode = new CommandMode();
 				break;
 		}
 		this.currentMode.open();

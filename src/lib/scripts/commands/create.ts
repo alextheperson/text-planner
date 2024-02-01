@@ -5,17 +5,16 @@ import { Connector } from '../shapes/connector';
 import { Rectangle } from '../shapes/rectangle';
 import { Bookmark } from '../shapes/bookmark';
 import { Button } from '../shapes/button';
-import { wp } from '$lib/components/stores';
 import Bracket from '../shapes/bracket';
 import { Command, CommandDefinition } from '../commands';
 import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
 
 new CommandDefinition('new')
 	.addOverride(() => {
-		ws.elements.push(
+		ws.currentDocument.elements.push(
 			new TextBox(
-				new BindableInt(wp.cursorX),
-				new BindableInt(wp.cursorY),
+				new BindableInt(ws.currentDocument.cursorX),
+				new BindableInt(ws.currentDocument.cursorY),
 				new BindableString('New Text'),
 				ws.getId()
 			)
@@ -25,10 +24,10 @@ new CommandDefinition('new')
 	}, ['text'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(
+			ws.currentDocument.elements.push(
 				new TextBox(
-					new BindableInt(wp.cursorX),
-					new BindableInt(wp.cursorY),
+					new BindableInt(ws.currentDocument.cursorX),
+					new BindableInt(ws.currentDocument.cursorY),
 					new BindableString(params[1].value as string),
 					ws.getId()
 				)
@@ -40,12 +39,12 @@ new CommandDefinition('new')
 		STATIC_TYPES.STRING
 	)
 	.addOverride(() => {
-		ws.elements.push(
+		ws.currentDocument.elements.push(
 			new Line(
-				new BindableInt(wp.cursorX),
-				new BindableInt(wp.cursorY),
-				new BindableInt(wp.cursorX + 5),
-				new BindableInt(wp.cursorY + 5),
+				new BindableInt(ws.currentDocument.cursorX),
+				new BindableInt(ws.currentDocument.cursorY),
+				new BindableInt(ws.currentDocument.cursorX + 5),
+				new BindableInt(ws.currentDocument.cursorY + 5),
 				ws.getId()
 			)
 		);
@@ -55,7 +54,7 @@ new CommandDefinition('new')
 	}, ['line'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(
+			ws.currentDocument.elements.push(
 				new Line(
 					new BindableInt(params[1].value as number),
 					new BindableInt(params[2].value as number),
@@ -75,12 +74,12 @@ new CommandDefinition('new')
 		STATIC_TYPES.INT
 	)
 	.addOverride(() => {
-		ws.elements.push(
+		ws.currentDocument.elements.push(
 			new Connector(
-				new BindableInt(wp.cursorX),
-				new BindableInt(wp.cursorY),
-				new BindableInt(wp.cursorX + 5),
-				new BindableInt(wp.cursorY + 5),
+				new BindableInt(ws.currentDocument.cursorX),
+				new BindableInt(ws.currentDocument.cursorY),
+				new BindableInt(ws.currentDocument.cursorX + 5),
+				new BindableInt(ws.currentDocument.cursorY + 5),
 				ws.getId()
 			)
 		);
@@ -89,7 +88,7 @@ new CommandDefinition('new')
 	}, ['connector'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(
+			ws.currentDocument.elements.push(
 				new Connector(
 					new BindableInt(params[1].value as number),
 					new BindableInt(params[2].value as number),
@@ -108,12 +107,12 @@ new CommandDefinition('new')
 		STATIC_TYPES.INT
 	)
 	.addOverride(() => {
-		ws.elements.push(
+		ws.currentDocument.elements.push(
 			new Rectangle(
-				new BindableInt(wp.cursorX),
-				new BindableInt(wp.cursorY),
-				new BindableInt(wp.cursorX + 5),
-				new BindableInt(wp.cursorY + 5),
+				new BindableInt(ws.currentDocument.cursorX),
+				new BindableInt(ws.currentDocument.cursorY),
+				new BindableInt(ws.currentDocument.cursorX + 5),
+				new BindableInt(ws.currentDocument.cursorY + 5),
 				ws.getId()
 			)
 		);
@@ -122,7 +121,7 @@ new CommandDefinition('new')
 	}, ['rect'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(
+			ws.currentDocument.elements.push(
 				new Rectangle(
 					new BindableInt(params[1].value as number),
 					new BindableInt(params[2].value as number),
@@ -141,10 +140,10 @@ new CommandDefinition('new')
 		STATIC_TYPES.INT
 	)
 	.addOverride(() => {
-		ws.elements.push(
+		ws.currentDocument.elements.push(
 			new Bookmark(
-				new BindableInt(wp.cursorX),
-				new BindableInt(wp.cursorY),
+				new BindableInt(ws.currentDocument.cursorX),
+				new BindableInt(ws.currentDocument.cursorY),
 				new BindableString('New Bookmark'),
 				ws.getId()
 			)
@@ -154,10 +153,10 @@ new CommandDefinition('new')
 	}, ['bookmark'])
 	.addOverride(
 		(params) => {
-			ws.elements.push(
+			ws.currentDocument.elements.push(
 				new Bookmark(
-					new BindableInt(wp.cursorX),
-					new BindableInt(wp.cursorY),
+					new BindableInt(ws.currentDocument.cursorX),
+					new BindableInt(ws.currentDocument.cursorY),
 					new BindableString(params[1].value as string),
 					ws.getId()
 				)
@@ -171,10 +170,10 @@ new CommandDefinition('new')
 	)
 	.addOverride(
 		(params) => {
-			ws.elements.push(
+			ws.currentDocument.elements.push(
 				new Button(
-					new BindableInt(wp.cursorX),
-					new BindableInt(wp.cursorY),
+					new BindableInt(ws.currentDocument.cursorX),
+					new BindableInt(ws.currentDocument.cursorY),
 					params[1].value as Command,
 					new BindableString('New Button'),
 					ws.getId()
@@ -188,10 +187,10 @@ new CommandDefinition('new')
 	)
 	.addOverride(
 		(params) => {
-			ws.elements.push(
+			ws.currentDocument.elements.push(
 				new Button(
-					new BindableInt(wp.cursorX),
-					new BindableInt(wp.cursorY),
+					new BindableInt(ws.currentDocument.cursorX),
+					new BindableInt(ws.currentDocument.cursorY),
 					params[1].value as Command,
 					new BindableString(params[2].value as string),
 					ws.getId()
@@ -206,10 +205,10 @@ new CommandDefinition('new')
 		STATIC_TYPES.STRING
 	)
 	.addOverride(() => {
-		ws.elements.push(
+		ws.currentDocument.elements.push(
 			new Bracket(
-				new BindableInt(wp.cursorX),
-				new BindableInt(wp.cursorY),
+				new BindableInt(ws.currentDocument.cursorX),
+				new BindableInt(ws.currentDocument.cursorY),
 				new BindableInt(3),
 				ws.getId()
 			)
@@ -218,10 +217,10 @@ new CommandDefinition('new')
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['bracket'])
 	.addOverride(() => {
-		ws.elements = [];
+		ws.currentDocument.elements = [];
 		ws.fileName = '';
-		wp.setCursorCoords(0, 0);
-		wp.setCanvasCoords(0, 0);
+		ws.currentDocument.setCursorCoords(0, 0);
+		ws.currentDocument.setCanvasCoords(0, 0);
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['file'])
 	.register();

@@ -23,6 +23,7 @@ shape:
   @c (under cursor)
   @### (by index)
   @i### (by id)
+  @@****** (select in tmp file)
 
 command:
   :??? ??? ??? (Execute command in root level)

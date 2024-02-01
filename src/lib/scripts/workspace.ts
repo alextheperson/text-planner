@@ -1,12 +1,9 @@
-import { display } from '$lib/components/stores';
 import Buffer from './buffer';
-import { parseExpression, CommandOutput, OUTPUT_TYPE } from './commands';
-import ModeManager, { Modes } from './modes';
-import { ShapeList as SHAPES } from './shapes/index';
-import { FRAME_CHARS, type SerializedShape, type Shape } from './shapes/shape';
+import { CommandOutput, OUTPUT_TYPE } from './commands';
+import { Modes } from './modes';
+import { FRAME_CHARS, type Shape } from './shapes/shape';
 import { TextBox } from './shapes/textbox';
-import { wp } from '$lib/components/stores';
-import { BindableInt, BindableString, STATIC_TYPES, Value } from './dataType';
+import { BindableInt, BindableString } from './dataType';
 
 import './commands/bindings';
 import './commands/create';
@@ -19,22 +16,17 @@ import './commands/logic';
 import './commands/strings';
 import './commands/typeConversion';
 import { UserConsole } from './userConsole';
+import { Document } from './document';
 
 class Workspace {
-	selected: Shape | null = null;
-
 	screenText = '';
 	graphicsText = '';
 
-	elements: Array<Shape> = [];
+	currentDocument = new Document();
 
 	showCommandCursor = true;
 
 	displayBuffer: Buffer;
-
-	currentCommand = '';
-	lastCommand = '';
-	currentOutput = new CommandOutput('', OUTPUT_TYPE.NORMAL);
 
 	showInvisibleChars = false;
 
@@ -45,24 +37,38 @@ class Workspace {
 	activeBindings: { x: number; y: number }[] = [];
 	isFirstFrame = false;
 
+	characterWidth = 0;
+	characterHeight = 0;
+	canvasWidth = 0;
+	canvasHeight = 0;
+
+	canvasX = 0;
+	canvasY = 0;
+
+	renderListeners: ((screen: string) => void)[] = [];
+
+	margin = 5;
+
 	constructor() {
 		// setInterval(() => {
 		// 	this.showCommandCursor = !this.showCommandCursor;
 		// 	this.drawScreen();
 		// }, 550);
-		this.displayBuffer = new Buffer(wp.canvasWidth, wp.canvasHeight, ' ');
+		this.displayBuffer = new Buffer(this.canvasWidth, this.canvasHeight, ' ');
 
-		wp.subscribe(() => {
-			this.drawScreen();
-		});
-
-		wp.setCursorCoords(0, 0);
+		this.currentDocument.setCursorCoords(0, 0);
 	}
 
 	underCursor(): Shape | null {
-		for (let i = 0; i < this.elements.length; i++) {
-			if (this.elements[i] && this.elements[i].isOn(wp.cursorX, wp.cursorY)) {
-				return this.elements[i];
+		for (let i = 0; i < this.currentDocument.elements.length; i++) {
+			if (
+				this.currentDocument.elements[i] &&
+				this.currentDocument.elements[i].isOn(
+					this.currentDocument.cursorX,
+					this.currentDocument.cursorY
+				)
+			) {
+				return this.currentDocument.elements[i];
 			}
 		}
 		return null;
@@ -72,16 +78,19 @@ class Workspace {
 	// 	ModeManager.currentMode.click(e)
 	// }
 
-	drawScreen() {
-		this.displayBuffer = new Buffer(wp.canvasWidth, wp.canvasHeight, '&nbsp;');
+	render() {
+		this.boundCanvas(this.margin);
+		this.displayBuffer = new Buffer(this.canvasWidth, this.canvasHeight, '&nbsp;');
 
-		for (let i = 0; i < this.elements.length; i++) {
+		for (let i = 0; i < this.currentDocument.elements.length; i++) {
 			// Display the user's content
 			try {
 				this.displayBuffer.composite(
-					this.elements[i].positionX.value - wp.canvasX,
-					this.elements[i].positionY.value - wp.canvasY,
-					this.elements[i].render(this.elements[i] == this.selected ? 'selected' : '')
+					this.currentDocument.elements[i].positionX.value - this.canvasX,
+					this.currentDocument.elements[i].positionY.value - this.canvasY,
+					this.currentDocument.elements[i].render(
+						this.currentDocument.elements[i] == this.currentDocument.selected ? 'selected' : ''
+					)
 				);
 			} catch (e) {
 				UserConsole.addLine((e as Error).message, OUTPUT_TYPE.ERROR);
@@ -90,8 +99,8 @@ class Workspace {
 
 		for (let i = 0; i < this.activeBindings.length; i++)
 			this.displayBuffer.composite(
-				this.activeBindings[i].x - wp.canvasX,
-				this.activeBindings[i].y - wp.canvasY,
+				this.activeBindings[i].x - this.canvasX,
+				this.activeBindings[i].y - this.canvasY,
 				new TextBox(
 					new BindableInt(0),
 					new BindableInt(0),
@@ -107,10 +116,10 @@ class Workspace {
 		for (let i = 1; i < this.displayBuffer.width - 1; i++) {
 			// Horizontal ruler
 			if (
-				(i + wp.canvasX) % 10 == 0 &&
-				(i + wp.canvasX).toString().length - 1 < this.displayBuffer.width - i
+				(i + this.canvasX) % 10 == 0 &&
+				(i + this.canvasX).toString().length - 1 < this.displayBuffer.width - i
 			) {
-				const string = ` ${(i + wp.canvasX).toString()} `;
+				const string = ` ${(i + this.canvasX).toString()} `;
 				this.displayBuffer.composite(
 					i - 1,
 					0,
@@ -123,7 +132,12 @@ class Workspace {
 				);
 			}
 		}
-		this.displayBuffer.setChar(wp.cursorX - wp.canvasX, 1, FRAME_CHARS[1][1][0][0], '');
+		this.displayBuffer.setChar(
+			this.currentDocument.cursorX - this.canvasX,
+			1,
+			FRAME_CHARS[1][1][0][0],
+			''
+		);
 
 		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
 			// Vertical ruler
@@ -132,10 +146,10 @@ class Workspace {
 		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
 			// Vertical ruler
 			if (
-				(i + wp.canvasY) % 10 == 0 &&
-				(i + wp.canvasY).toString().length + 1 < this.displayBuffer.height - i
+				(i + this.canvasY) % 10 == 0 &&
+				(i + this.canvasY).toString().length + 1 < this.displayBuffer.height - i
 			) {
-				const string = ` ${(i + wp.canvasY).toString()} `;
+				const string = ` ${(i + this.canvasY).toString()} `;
 				this.displayBuffer.composite(
 					0,
 					i - 1,
@@ -148,7 +162,12 @@ class Workspace {
 				);
 			}
 		}
-		this.displayBuffer.setChar(1, wp.cursorY - wp.canvasY, FRAME_CHARS[0][0][1][1], '');
+		this.displayBuffer.setChar(
+			1,
+			this.currentDocument.cursorY - this.canvasY,
+			FRAME_CHARS[0][0][1][1],
+			''
+		);
 
 		this.displayBuffer.setChar(0, 0, FRAME_CHARS[0][1][0][1], '');
 
@@ -158,33 +177,36 @@ class Workspace {
 			UserConsole.render(this.displayBuffer.width, this.displayBuffer.height)
 		);
 
-		display.set(this.displayBuffer.render());
+		const output = this.displayBuffer.render();
+
+		this.renderListeners.forEach((val) => {
+			val(output);
+		});
 		this.isFirstFrame = false;
 	}
 
-	runCommand(command: string) {
-		try {
-			const output = parseExpression(command);
-			if (output instanceof Value) {
-				this.currentOutput = new CommandOutput(
-					`(${STATIC_TYPES[output.type]}) ${output.value}`,
-					OUTPUT_TYPE.NORMAL
-				);
-			}
-			if (output instanceof CommandOutput) {
-				this.currentOutput = output;
-			}
-		} catch (e) {
-			this.currentOutput = new CommandOutput((e as Error).message, OUTPUT_TYPE.ERROR);
-		}
-		this.selected = this.underCursor();
-		this.drawScreen();
-	}
+	// runCommand(command: string) {
+	// 	try {
+	// 		const output = parseExpression(command);
+	// 		if (output instanceof Value) {
+	// 			UserConsole.currentOutput = new CommandOutput(
+	// 				`(${STATIC_TYPES[output.type]}) ${output.value}`,
+	// 				OUTPUT_TYPE.NORMAL
+	// 			);
+	// 		}
+	// 		if (output instanceof CommandOutput) {
+	// 			UserConsole.currentOutput = output;
+	// 		}
+	// 	} catch (e) {
+	// 		UserConsole.currentOutput = new CommandOutput((e as Error).message, OUTPUT_TYPE.ERROR);
+	// 	}
+	// 	this.drawScreen();
+	// }
 
 	cullElements() {
-		for (let i = 0; i < this.elements.length; i++) {
-			if (this.elements[i].shouldRemove) {
-				this.elements.splice(i, 1);
+		for (let i = 0; i < this.currentDocument.elements.length; i++) {
+			if (this.currentDocument.elements[i].shouldRemove) {
+				this.currentDocument.elements.splice(i, 1);
 				i -= 1; //since we just deleted an element
 			}
 		}
@@ -198,13 +220,13 @@ class Workspace {
 			OUTPUT_TYPE.NORMAL
 		);
 		string = JSON.stringify({
-			cursorPositionX: wp.cursorX,
-			cursorPositionY: wp.cursorY,
-			viewPositionX: wp.canvasX,
-			viewPositionY: wp.canvasY,
+			cursorPositionX: this.currentDocument.cursorX,
+			cursorPositionY: this.currentDocument.cursorY,
+			viewPositionX: this.canvasX,
+			viewPositionY: this.canvasY,
 			allowedModes: this.allowedModes
 		});
-		this.elements.forEach((el) => {
+		this.currentDocument.elements.forEach((el) => {
 			const stringified = JSON.stringify((el.constructor as typeof Shape).serialize(el));
 			if (stringified.match(/.*\[,\].*/) !== null) {
 				output = new CommandOutput(
@@ -224,37 +246,58 @@ class Workspace {
 		return output;
 	}
 
-	loadElements(path: string): CommandOutput {
+	loadElements(path: string) {
 		this.isFirstFrame = true;
 		const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
-		const parts = localStorage.getItem(normalizedPath)?.split('[,]') ?? [];
-		if (parts.length < 1) {
-			return new CommandOutput(`The files ${normalizedPath} does not exist`, OUTPUT_TYPE.ERROR);
-		}
-		const list = parts.slice(1);
-		const state = JSON.parse(parts[0]);
-		this.elements = [];
-		list?.map((el) => {
-			if (el === '') {
-				return;
-			}
-			for (let i = 0; i < SHAPES.length; i++) {
-				const decoded = SHAPES[i].deserialize(JSON.parse(el) as SerializedShape);
-				if (decoded !== null) {
-					this.elements.push(decoded);
-				}
-			}
-		});
-		this.fileName = normalizedPath;
-		wp.setCursorCoords(state['cursorPositionX'] ?? 0, state['cursorPositionY'] ?? 0);
-		wp.setCanvasCoords(state['viewPositionX'], state['viewPositionY']);
-		this.allowedModes = state['allowedModes'];
-		ModeManager.setMode(Modes.VIEW_MODE);
-		return new CommandOutput(`Loaded the workspace ${path}`, OUTPUT_TYPE.NORMAL);
+		this.currentDocument = new Document(localStorage.getItem(normalizedPath) ?? undefined);
 	}
 
 	getId(): string {
 		return 'a' + Math.floor(Math.random() * 1000);
+	}
+
+	subscribe(cb: (screen: string) => void) {
+		this.renderListeners.push(cb);
+	}
+
+	moveCanvas(x: number, y: number) {
+		this.canvasX += x;
+		this.canvasY += y;
+	}
+
+	setCanvasCoords(x: number, y: number) {
+		this.canvasX = x;
+		this.canvasY = y;
+	}
+
+	private boundCursor(margin: number) {
+		if (this.currentDocument.cursorX - this.canvasX < margin + 1) {
+			this.currentDocument.cursorX = this.canvasX + margin + 1;
+		}
+		if (this.currentDocument.cursorX - this.canvasX > this.canvasWidth - margin + 1) {
+			this.currentDocument.cursorX = this.canvasX + this.canvasWidth + margin + 1;
+		}
+		if (this.currentDocument.cursorY - this.canvasY < margin + 1) {
+			this.currentDocument.cursorY = this.canvasY + margin + 1;
+		}
+		if (this.currentDocument.cursorY - this.canvasY > this.canvasHeight - margin + 3) {
+			this.currentDocument.cursorY = this.canvasY + this.canvasHeight + margin + 3;
+		}
+	}
+
+	private boundCanvas(margin: number) {
+		if (this.currentDocument.cursorX - this.canvasX < margin + 1) {
+			this.canvasX = this.currentDocument.cursorX - margin - 1;
+		}
+		if (this.currentDocument.cursorX - this.canvasX > this.canvasWidth - margin - 1) {
+			this.canvasX = this.currentDocument.cursorX - this.canvasWidth + margin + 1;
+		}
+		if (this.currentDocument.cursorY - this.canvasY < margin + 1) {
+			this.canvasY = this.currentDocument.cursorY - margin - 1;
+		}
+		if (this.currentDocument.cursorY - this.canvasY > this.canvasHeight - margin - 3) {
+			this.canvasY = this.currentDocument.cursorY - this.canvasHeight + margin + 3;
+		}
 	}
 }
 

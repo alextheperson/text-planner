@@ -2,7 +2,6 @@ import { workspace as ws } from '../workspace';
 import { Modes } from '../modes';
 import { Button } from '../shapes/button';
 import { Bookmark } from '../shapes/bookmark';
-import { wp } from '$lib/components/stores';
 import { Command, CommandDefinition, OUTPUT_TYPE } from '../commands';
 import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
 import { UserConsole } from '../userConsole';
@@ -41,7 +40,7 @@ new CommandDefinition('load')
 
 new CommandDefinition('clear')
 	.addOverride(() => {
-		ws.elements = [];
+		ws.currentDocument.elements = [];
 		// `Deleted all elements from the workspace`
 		return new Value(null, STATIC_TYPES.NULL);
 	}, ['confirm'])
@@ -55,7 +54,7 @@ new CommandDefinition('ls')
 	.addOverride(() => {
 		const files = Object.keys(localStorage).filter((val) => !val.startsWith('$')); // JSON.parse(localStorage.getItem('$files') ?? '[]');
 		ws.saveElements('$tmp');
-		ws.elements = [];
+		ws.currentDocument.elements = [];
 		type _FolderTree = { [k: string]: _FolderTree | string };
 		const folderStructure: _FolderTree = {};
 		for (let i = 0; i < files.length; i++) {
@@ -81,7 +80,7 @@ new CommandDefinition('ls')
 			});
 			for (let k = 0; k < keys.length; k++) {
 				if (typeof tree[keys[k]] == 'string') {
-					ws.elements.push(
+					ws.currentDocument.elements.push(
 						new Button(
 							new BindableInt(indentation),
 							new BindableInt(height),
@@ -110,7 +109,7 @@ new CommandDefinition('ls')
 					);
 					height += 1;
 				} else {
-					ws.elements.push(
+					ws.currentDocument.elements.push(
 						new Bookmark(
 							new BindableInt(indentation),
 							new BindableInt(height),
@@ -125,8 +124,8 @@ new CommandDefinition('ls')
 		};
 		drawFiles(folderStructure, 0);
 		ws.allowedModes = [Modes.VIEW_MODE, Modes.COMMAND];
-		wp.setCanvasCoords(0, 0);
-		wp.setCursorCoords(0, 0);
+		ws.currentDocument.setCanvasCoords(0, 0);
+		ws.currentDocument.setCursorCoords(0, 0);
 
 		// ws.elements.push(new Button(new Vector2(0, i), `load ${files[i]}`, files[i]));
 		// `Opened file browser. To exit, press the back button, enter ':back' or enter ':load "$tmp"'`

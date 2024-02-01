@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { wp } from '$lib/components/stores';
 import Buffer from '../buffer';
 import {
 	BindableInt,
@@ -9,6 +8,7 @@ import {
 	Binding,
 	Value
 } from '../dataType';
+import { workspace as ws } from '../workspace';
 import type { SerializedShape, Shape } from './shape';
 import { FRAME_CHARS } from './shape';
 import { TwoPointShape } from './twoPointShape';
@@ -107,25 +107,25 @@ export class Rectangle extends TwoPointShape implements Shape {
 		if (cursorX === this.startX.value && cursorY === this.startY.value) {
 			this.startX.value += deltaX;
 			this.startY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
+			ws.currentDocument.moveCursor(deltaX, deltaY);
 		} else if (cursorX === this.endX.value && cursorY === this.endY.value) {
 			this.endX.value += deltaX;
 			this.endY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
+			ws.currentDocument.moveCursor(deltaX, deltaY);
 		} else if (cursorX === this.startX.value && cursorY === this.endY.value) {
 			this.startX.value += deltaX;
 			this.endY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
+			ws.currentDocument.moveCursor(deltaX, deltaY);
 		} else if (cursorX === this.endX.value && cursorY === this.startY.value) {
 			this.endX.value += deltaX;
 			this.startY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
+			ws.currentDocument.moveCursor(deltaX, deltaY);
 		} else {
 			this.startX.value += deltaX;
 			this.startY.value += deltaY;
 			this.endX.value += deltaX;
 			this.endY.value += deltaY;
-			wp.moveCursor(deltaX, deltaY);
+			ws.currentDocument.moveCursor(deltaX, deltaY);
 		}
 
 		this.updateDimensions();

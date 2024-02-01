@@ -1,4 +1,3 @@
-import { wp } from '$lib/components/stores';
 import { STATIC_TYPES, Value, type DataType } from './dataType';
 import { workspace as ws } from './workspace';
 
@@ -109,7 +108,9 @@ export function parseExpression(expression: string): Value | Command {
 		return new Value(parseFloat(exp), STATIC_TYPES.FLOAT);
 	} else if (exp === '@c') {
 		// Match the shape under the cursor
-		const shape = ws.elements.filter((val) => val.isOn(wp.cursorX, wp.cursorY)).at(0);
+		const shape = ws.currentDocument.elements
+			.filter((val) => val.isOn(ws.currentDocument.cursorX, ws.currentDocument.cursorY))
+			.at(0);
 		if (shape === undefined) {
 			throw new Error('There is no shape under the cursor');
 		}
@@ -120,24 +121,26 @@ export function parseExpression(expression: string): Value | Command {
 			.slice(1)
 			.split(',')
 			.map((val) => parseInt(val));
-		const shape = ws.elements.filter((val) => val.isOn(coordinates[0], coordinates[1])).at(0);
+		const shape = ws.currentDocument.elements
+			.filter((val) => val.isOn(coordinates[0], coordinates[1]))
+			.at(0);
 		if (shape === undefined) {
 			throw new Error(`No shape exists at ${exp.slice(1).split(',')}`);
 		}
 		return new Value(shape, STATIC_TYPES.SHAPE);
 	} else if (exp.match(/^@i[0-9]+$/)) {
 		// Match the shape with that index
-		if (parseInt(exp.slice(2)) >= ws.elements.length) {
+		if (parseInt(exp.slice(2)) >= ws.currentDocument.elements.length) {
 			throw new Error(
 				`There is no shape at index ${parseInt(exp.slice(2))}. There are only ${
-					ws.elements.length
+					ws.currentDocument.elements.length
 				} shapes(s)`
 			);
 		}
-		return new Value(ws.elements[parseInt(exp.slice(2))], STATIC_TYPES.SHAPE);
+		return new Value(ws.currentDocument.elements[parseInt(exp.slice(2))], STATIC_TYPES.SHAPE);
 	} else if (exp.match(/^@[a-zA-Z0-9-]+$/)) {
 		// Match the shape wth that id
-		const shape = ws.elements.filter((val) => val.id === exp.slice(1)).at(0);
+		const shape = ws.currentDocument.elements.filter((val) => val.id === exp.slice(1)).at(0);
 		if (shape === undefined) {
 			throw new Error(`There is no shape with the id '${exp.slice(1)}'`);
 		}
