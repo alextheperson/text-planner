@@ -60,7 +60,7 @@ new CommandDefinition('border')
 					new Command(
 						'get',
 						[new Value(selected, STATIC_TYPES.SHAPE), new Value('position/x', STATIC_TYPES.STRING)],
-						`:get @i${selected.id} "position/x"`
+						`:get @${selected.id} "position/x"`
 					)
 				);
 			rect.bindings
@@ -70,7 +70,7 @@ new CommandDefinition('border')
 					new Command(
 						'get',
 						[new Value(selected, STATIC_TYPES.SHAPE), new Value('position/y', STATIC_TYPES.STRING)],
-						`:get @i${selected.id} "position/y"`
+						`:get @${selected.id} "position/y"`
 					)
 				);
 			rect.bindings
@@ -78,7 +78,7 @@ new CommandDefinition('border')
 				.at(0)
 				?.setValue(
 					parseExpression(
-						`(:floor (:add (:get @i${selected.id} "position/x") (:get @i${selected.id} "size/width")))`
+						`(:floor (:add (:get @${selected.id} "position/x") (:get @${selected.id} "size/width")))`
 					) as Command
 				);
 			rect.bindings
@@ -86,7 +86,7 @@ new CommandDefinition('border')
 				.at(0)
 				?.setValue(
 					parseExpression(
-						`(:floor (:add (:get @i${selected.id} "position/y") (:get @i${selected.id} "size/height")))`
+						`(:floor (:add (:get @${selected.id} "position/y") (:get @${selected.id} "size/height")))`
 					) as Command
 				);
 			ws.currentDocument.elements.push(rect);

@@ -2,7 +2,7 @@ import Buffer from './buffer';
 import { parseExpression, OUTPUT_TYPE, Command, CommandRegistry } from './commands';
 import { BindableInt, BindableString, STATIC_TYPES, Value } from './dataType';
 import { keymap } from './keymap';
-import ModeManager, { Modes } from './modes';
+import { Modes } from './modes';
 import { TextBox } from './shapes/textbox';
 import { workspace as ws } from './workspace';
 
@@ -29,11 +29,14 @@ class ConsoleLine {
 	}
 }
 
-class CommandConsole {
+/**
+ * Represents the console, which allows the user to input and execute commands.
+ */
+export class CommandConsole {
 	/**
 	 * The number of previous commands that the console stores.
 	 */
-	historyLength = 5;
+	historyLength = 10;
 	/**
 	 * The number of lines to display onscreen. Also determines the height.
 	 */
@@ -64,6 +67,10 @@ class CommandConsole {
 	private currentTokens: string[] = [];
 
 	private scrollPosition = 0;
+
+	constructor(height: number) {
+		this.historyDisplayLines = height;
+	}
 
 	/**
 	 * Renders the console in its current state.
@@ -262,10 +269,12 @@ class CommandConsole {
 			} else if (key === '(') {
 				this.addChar(')', this.cursorPosition);
 			}
+			this.autofillPosition = 0;
 		} else if (keymap.cancel.includes(key)) {
 			this.deleteChar(this.cursorPosition);
 			// this.cursorPosition -= 1;
 			this.cursorPosition = Math.max(this.cursorPosition - 1, 0);
+			this.autofillPosition = 0;
 		} else if (keymap.confirm.includes(key)) {
 			this.run();
 			ws.currentDocument.modeManager.setMode(Modes.VIEW_MODE);
@@ -346,6 +355,7 @@ class CommandConsole {
 			this.addLine((e as Error).message, OUTPUT_TYPE.ERROR);
 		}
 		this.open();
+		ws.currentDocument.invalidateSelection();
 	}
 
 	/**
@@ -414,7 +424,6 @@ class CommandConsole {
 				/* empty */
 			}
 		}
-
 		return possibilities;
 	}
 
@@ -490,6 +499,7 @@ class CommandConsole {
 		this.currentTokens.push(newToken);
 		this.currentLine.message = ':' + this.currentTokens.join(' ');
 		this.cursorPosition = this.currentLine.message.length;
+		this.autofillPosition = 0;
 	}
 
 	get currentLine() {
@@ -545,5 +555,3 @@ class CommandConsole {
 		return -1;
 	}
 }
-
-export const UserConsole = new CommandConsole();

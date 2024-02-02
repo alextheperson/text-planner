@@ -15,24 +15,23 @@ import './commands/settings';
 import './commands/logic';
 import './commands/strings';
 import './commands/typeConversion';
-import { UserConsole } from './userConsole';
+import { CommandConsole } from './userConsole';
 import { Document } from './document';
 
 class Workspace {
 	screenText = '';
 	graphicsText = '';
 
-	currentDocument = new Document();
+	openDocument = new Document('*unsaved*');
+
+	subdocuments: Document[] = [];
+	currentSubdocument = -1;
 
 	showCommandCursor = true;
 
 	displayBuffer: Buffer;
 
 	showInvisibleChars = false;
-
-	writable = true;
-	allowedModes = [Modes.VIEW_MODE, Modes.EDIT_MODE, Modes.MOVE_MODE, Modes.COMMAND];
-	fileName = '';
 
 	activeBindings: { x: number; y: number }[] = [];
 	isFirstFrame = false;
@@ -47,14 +46,15 @@ class Workspace {
 
 	renderListeners: ((screen: string) => void)[] = [];
 
-	margin = 5;
+	cursorMargin = 5;
+
+	console: CommandConsole;
+
+	insets = { top: 1, bottom: 5, left: 0, right: 0 };
 
 	constructor() {
-		// setInterval(() => {
-		// 	this.showCommandCursor = !this.showCommandCursor;
-		// 	this.drawScreen();
-		// }, 550);
 		this.displayBuffer = new Buffer(this.canvasWidth, this.canvasHeight, ' ');
+		this.console = new CommandConsole(this.insets.bottom);
 
 		this.currentDocument.setCursorCoords(0, 0);
 	}
@@ -79,102 +79,55 @@ class Workspace {
 	// }
 
 	render() {
-		this.boundCanvas(this.margin);
+		this.boundCanvas(this.cursorMargin);
 		this.displayBuffer = new Buffer(this.canvasWidth, this.canvasHeight, '&nbsp;');
 
 		for (let i = 0; i < this.currentDocument.elements.length; i++) {
 			// Display the user's content
 			try {
 				this.displayBuffer.composite(
-					this.currentDocument.elements[i].positionX.value - this.canvasX,
-					this.currentDocument.elements[i].positionY.value - this.canvasY,
+					this.currentDocument.elements[i].positionX.value - this.canvasX + this.insets.left,
+					this.currentDocument.elements[i].positionY.value - this.canvasY + this.insets.top,
 					this.currentDocument.elements[i].render(
 						this.currentDocument.elements[i] == this.currentDocument.selected ? 'selected' : ''
 					)
 				);
 			} catch (e) {
-				UserConsole.addLine((e as Error).message, OUTPUT_TYPE.ERROR);
+				this.console.addLine((e as Error).message, OUTPUT_TYPE.ERROR);
 			}
 		}
+
+		this.displayBuffer.composite(
+			1,
+			0,
+			new TextBox(
+				new BindableInt(0),
+				new BindableInt(0),
+				new BindableString(this.currentDocument.fileName),
+				''
+			).render('')
+		);
 
 		for (let i = 0; i < this.activeBindings.length; i++)
 			this.displayBuffer.composite(
 				this.activeBindings[i].x - this.canvasX,
 				this.activeBindings[i].y - this.canvasY,
-				new TextBox(
-					new BindableInt(0),
-					new BindableInt(0),
-					new BindableString('X'),
-					this.getId()
-				).render('')
+				new TextBox(new BindableInt(0), new BindableInt(0), new BindableString('X'), '').render('')
 			); // Display bindings
 
-		for (let i = 1; i < this.displayBuffer.width - 1; i++) {
-			// Horizontal ruler
-			this.displayBuffer.setChar(i, 0, FRAME_CHARS[0][0][1][1], '');
-		}
-		for (let i = 1; i < this.displayBuffer.width - 1; i++) {
-			// Horizontal ruler
-			if (
-				(i + this.canvasX) % 10 == 0 &&
-				(i + this.canvasX).toString().length - 1 < this.displayBuffer.width - i
-			) {
-				const string = ` ${(i + this.canvasX).toString()} `;
-				this.displayBuffer.composite(
-					i - 1,
-					0,
-					new TextBox(
-						new BindableInt(0),
-						new BindableInt(0),
-						new BindableString(string),
-						this.getId()
-					).render('')
-				);
-			}
-		}
-		this.displayBuffer.setChar(
-			this.currentDocument.cursorX - this.canvasX,
-			1,
-			FRAME_CHARS[1][1][0][0],
-			''
+		this.displayBuffer.composite(
+			this.insets.left,
+			this.insets.top,
+			this.renderRulers(
+				this.displayBuffer.width - (this.insets.left + this.insets.right),
+				this.displayBuffer.height - (this.insets.top + this.insets.bottom)
+			)
 		);
-
-		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
-			// Vertical ruler
-			this.displayBuffer.setChar(0, i, FRAME_CHARS[1][1][0][0], '');
-		}
-		for (let i = 1; i < this.displayBuffer.height - 5; i++) {
-			// Vertical ruler
-			if (
-				(i + this.canvasY) % 10 == 0 &&
-				(i + this.canvasY).toString().length + 1 < this.displayBuffer.height - i
-			) {
-				const string = ` ${(i + this.canvasY).toString()} `;
-				this.displayBuffer.composite(
-					0,
-					i - 1,
-					new TextBox(
-						new BindableInt(0),
-						new BindableInt(0),
-						new BindableString(string.split('').join('\n')),
-						this.getId()
-					).render('')
-				);
-			}
-		}
-		this.displayBuffer.setChar(
-			1,
-			this.currentDocument.cursorY - this.canvasY,
-			FRAME_CHARS[0][0][1][1],
-			''
-		);
-
-		this.displayBuffer.setChar(0, 0, FRAME_CHARS[0][1][0][1], '');
 
 		this.displayBuffer.composite(
 			0,
 			0,
-			UserConsole.render(this.displayBuffer.width, this.displayBuffer.height)
+			this.console.render(this.displayBuffer.width, this.displayBuffer.height)
 		);
 
 		const output = this.displayBuffer.render();
@@ -183,6 +136,57 @@ class Workspace {
 			val(output);
 		});
 		this.isFirstFrame = false;
+	}
+
+	renderRulers(width: number, height: number) {
+		const buffer = new Buffer(width, height, '');
+		for (let i = 1; i < width - 1; i++) {
+			// Horizontal ruler
+			buffer.setChar(i, 0, FRAME_CHARS[0][0][1][1], '');
+		}
+		for (let i = 1; i < width - 1; i++) {
+			// Horizontal ruler
+			if ((i + this.canvasX) % 10 == 0 && (i + this.canvasX).toString().length - 1 < width - i) {
+				const string = ` ${(i + this.canvasX).toString()} `;
+				buffer.composite(
+					i - 1,
+					0,
+					new TextBox(
+						new BindableInt(0),
+						new BindableInt(0),
+						new BindableString(string),
+						''
+					).render('')
+				);
+			}
+		}
+		buffer.setChar(this.currentDocument.cursorX - this.canvasX, 1, FRAME_CHARS[1][1][0][0], '');
+
+		for (let i = 1; i < height; i++) {
+			// Vertical ruler
+			buffer.setChar(0, i, FRAME_CHARS[1][1][0][0], '');
+		}
+		for (let i = 1; i < height; i++) {
+			// Vertical ruler
+			if ((i + this.canvasY) % 10 == 0 && (i + this.canvasY).toString().length + 1 < height - i) {
+				const string = ` ${(i + this.canvasY).toString()} `;
+				buffer.composite(
+					0,
+					i - 1,
+					new TextBox(
+						new BindableInt(0),
+						new BindableInt(0),
+						new BindableString(string.split('').join('\n')),
+						''
+					).render('')
+				);
+			}
+		}
+		buffer.setChar(1, this.currentDocument.cursorY - this.canvasY, FRAME_CHARS[0][0][1][1], '');
+
+		buffer.setChar(0, 0, FRAME_CHARS[0][1][0][1], '');
+
+		return buffer;
 	}
 
 	// runCommand(command: string) {
@@ -212,44 +216,20 @@ class Workspace {
 		}
 	}
 
-	saveElements(path: string): CommandOutput {
+	saveElements(path: string) {
 		const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
-		let string = '';
-		let output = new CommandOutput(
-			`Saved the workspace to file ${normalizedPath}`,
-			OUTPUT_TYPE.NORMAL
-		);
-		string = JSON.stringify({
-			cursorPositionX: this.currentDocument.cursorX,
-			cursorPositionY: this.currentDocument.cursorY,
-			viewPositionX: this.canvasX,
-			viewPositionY: this.canvasY,
-			allowedModes: this.allowedModes
-		});
-		this.currentDocument.elements.forEach((el) => {
-			const stringified = JSON.stringify((el.constructor as typeof Shape).serialize(el));
-			if (stringified.match(/.*\[,\].*/) !== null) {
-				output = new CommandOutput(
-					`Saved the workspace to file ${normalizedPath}, but it contained '[,]' which had to be escaped.`,
-					OUTPUT_TYPE.WARNING
-				);
-			}
-			string += '[,]' + stringified.replace('[,]', '[]');
-		});
-		localStorage.setItem(normalizedPath, string);
-
-		// const fileList = JSON.parse(localStorage.getItem('$files') ?? '[]');
-		// if (!fileList.includes(normalizedPath) && !path.startsWith('$')) {
-		// 	localStorage.setItem('$files', JSON.stringify(fileList.concat(normalizedPath)));
-		// }
-
-		return output;
+		this.openDocument.fileName = normalizedPath;
+		localStorage.setItem(normalizedPath, this.openDocument.serialize());
 	}
 
 	loadElements(path: string) {
 		this.isFirstFrame = true;
 		const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
-		this.currentDocument = new Document(localStorage.getItem(normalizedPath) ?? undefined);
+		this.openDocument = new Document(path, localStorage.getItem(normalizedPath) ?? undefined);
+		this.subdocuments = [];
+		this.currentSubdocument = -1;
+		this.setCanvasCoords(0, 0);
+		this.boundCanvas(this.cursorMargin);
 	}
 
 	getId(): string {
@@ -263,11 +243,15 @@ class Workspace {
 	moveCanvas(x: number, y: number) {
 		this.canvasX += x;
 		this.canvasY += y;
+
+		this.currentDocument.invalidateSelection();
 	}
 
 	setCanvasCoords(x: number, y: number) {
 		this.canvasX = x;
 		this.canvasY = y;
+
+		this.currentDocument.invalidateSelection();
 	}
 
 	private boundCursor(margin: number) {
@@ -280,24 +264,56 @@ class Workspace {
 		if (this.currentDocument.cursorY - this.canvasY < margin + 1) {
 			this.currentDocument.cursorY = this.canvasY + margin + 1;
 		}
-		if (this.currentDocument.cursorY - this.canvasY > this.canvasHeight - margin + 3) {
-			this.currentDocument.cursorY = this.canvasY + this.canvasHeight + margin + 3;
+		if (
+			this.currentDocument.cursorY - this.canvasY >
+			this.canvasHeight - margin + this.insets.bottom
+		) {
+			this.currentDocument.cursorY = this.canvasY + this.canvasHeight + margin + this.insets.bottom;
 		}
 	}
 
 	private boundCanvas(margin: number) {
-		if (this.currentDocument.cursorX - this.canvasX < margin + 1) {
-			this.canvasX = this.currentDocument.cursorX - margin - 1;
+		if (this.currentDocument.cursorX - this.canvasX < margin + (this.insets.left + 1)) {
+			this.canvasX = this.currentDocument.cursorX - margin - (this.insets.left + 1);
 		}
-		if (this.currentDocument.cursorX - this.canvasX > this.canvasWidth - margin - 1) {
-			this.canvasX = this.currentDocument.cursorX - this.canvasWidth + margin + 1;
+		if (
+			this.currentDocument.cursorX - this.canvasX >
+			this.canvasWidth - margin - (this.insets.right + 1)
+		) {
+			this.canvasX =
+				this.currentDocument.cursorX - this.canvasWidth + margin + (this.insets.right + 1);
 		}
-		if (this.currentDocument.cursorY - this.canvasY < margin + 1) {
-			this.canvasY = this.currentDocument.cursorY - margin - 1;
+		if (this.currentDocument.cursorY - this.canvasY < margin + (this.insets.top + 1)) {
+			this.canvasY = this.currentDocument.cursorY - margin - (this.insets.top + 1);
 		}
-		if (this.currentDocument.cursorY - this.canvasY > this.canvasHeight - margin - 3) {
-			this.canvasY = this.currentDocument.cursorY - this.canvasHeight + margin + 3;
+		if (
+			this.currentDocument.cursorY - this.canvasY >
+			this.canvasHeight - margin - (this.insets.bottom + 1)
+		) {
+			this.canvasY =
+				this.currentDocument.cursorY - this.canvasHeight + margin + (this.insets.bottom + 1);
 		}
+	}
+
+	get currentDocument() {
+		if (this.currentSubdocument !== -1) {
+			return this.subdocuments[this.currentSubdocument];
+		}
+		return this.openDocument;
+	}
+
+	openSubdocument(name: string) {
+		this.subdocuments.push(new Document(`${this.currentDocument.fileName} > ${name}`));
+		this.currentSubdocument = this.subdocuments.length - 1;
+		this.setCanvasCoords(0, 0);
+		this.boundCanvas(this.cursorMargin);
+	}
+
+	closeSubdocument() {
+		this.subdocuments.pop();
+		this.currentSubdocument = this.subdocuments.length - 1;
+		this.setCanvasCoords(0, 0);
+		this.boundCanvas(this.cursorMargin);
 	}
 }
 

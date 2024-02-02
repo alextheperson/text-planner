@@ -16,7 +16,9 @@ import './commands/strings';
 import './commands/typeConversion';
 
 export class Document {
-	selected: Shape | null = null;
+	lastSelected: Shape | null = null;
+	private selectionChanged = true;
+	private _selectionLocked = false;
 
 	elements: Array<Shape> = [];
 
@@ -29,7 +31,8 @@ export class Document {
 
 	modeManager = new ModeManager();
 
-	constructor(data?: string) {
+	constructor(path: string, data?: string) {
+		this.fileName = path;
 		if (data == undefined) {
 			return;
 		}
@@ -115,10 +118,63 @@ export class Document {
 	moveCursor(x: number, y: number) {
 		this.cursorX += x;
 		this.cursorY += y;
+
+		this.invalidateSelection();
 	}
 
 	setCursorCoords(x: number, y: number) {
 		this.cursorX = x;
 		this.cursorY = y;
+
+		this.invalidateSelection();
+	}
+
+	serialize() {
+		let string = '';
+		string = JSON.stringify({
+			cursorPositionX: this.cursorX,
+			cursorPositionY: this.cursorY,
+			allowedModes: this.allowedModes,
+			fileName: this.fileName,
+			writable: this.writable
+		});
+		this.elements.forEach((el) => {
+			const stringified = JSON.stringify((el.constructor as typeof Shape).serialize(el));
+			string += '[,]' + stringified.replace('[,]', '[]');
+		});
+		return string;
+	}
+
+	get selected() {
+		if (this.selectionChanged && !this._selectionLocked) {
+			this.lastSelected = this.underCursor();
+			this.selectionChanged = false;
+		}
+
+		return this.lastSelected;
+	}
+
+	invalidateSelection() {
+		this.selectionChanged = true;
+	}
+
+	revalidateSelection() {
+		this.selectionChanged = false;
+	}
+
+	get selectionValid() {
+		return !this.selectionChanged;
+	}
+
+	lockSelection() {
+		this._selectionLocked = true;
+	}
+
+	unlockSelection() {
+		this._selectionLocked = false;
+	}
+
+	get selectionLocked() {
+		return this._selectionLocked;
 	}
 }

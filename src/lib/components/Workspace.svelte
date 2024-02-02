@@ -60,8 +60,10 @@
 			return;
 		}
 		workspace.innerHTML = screen;
-		cursor.style.left = (ws.currentDocument.cursorX - ws.canvasX) * ws.characterWidth + 'px';
-		cursor.style.top = (ws.currentDocument.cursorY - ws.canvasY) * ws.characterHeight + 'px';
+		cursor.style.left =
+			(ws.currentDocument.cursorX - ws.canvasX + ws.insets.left) * ws.characterWidth + 'px';
+		cursor.style.top =
+			(ws.currentDocument.cursorY - ws.canvasY + ws.insets.top) * ws.characterHeight + 'px';
 		cursor.style.width = ws.characterWidth + 'px';
 		cursor.style.height = ws.characterHeight + 1.5 + 'px';
 	}

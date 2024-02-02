@@ -4,11 +4,10 @@ import { Button } from '../shapes/button';
 import { Bookmark } from '../shapes/bookmark';
 import { Command, CommandDefinition, OUTPUT_TYPE } from '../commands';
 import { BindableInt, BindableString, STATIC_TYPES, Value } from '../dataType';
-import { UserConsole } from '../userConsole';
 
 new CommandDefinition('log')
 	.addOverride((params) => {
-		UserConsole.addLine(params[0].value as string, OUTPUT_TYPE.NORMAL);
+		ws.console.addLine(params[0].value as string, OUTPUT_TYPE.NORMAL);
 		return params[0];
 	}, STATIC_TYPES.ANY)
 	.register();
@@ -22,8 +21,8 @@ new CommandDefinition('save')
 		return new Value(null, STATIC_TYPES.NULL);
 	}, STATIC_TYPES.STRING)
 	.addOverride(() => {
-		if (ws.fileName !== '') {
-			ws.saveElements(ws.fileName);
+		if (ws.currentDocument.fileName !== '') {
+			ws.saveElements(ws.currentDocument.fileName);
 		} else {
 			// `This workspace has not been saved yet. Save it with the command 'command <path>' to give a default save path`
 		}
@@ -53,8 +52,7 @@ new CommandDefinition('clear')
 new CommandDefinition('ls')
 	.addOverride(() => {
 		const files = Object.keys(localStorage).filter((val) => !val.startsWith('$')); // JSON.parse(localStorage.getItem('$files') ?? '[]');
-		ws.saveElements('$tmp');
-		ws.currentDocument.elements = [];
+		ws.openSubdocument('files');
 		type _FolderTree = { [k: string]: _FolderTree | string };
 		const folderStructure: _FolderTree = {};
 		for (let i = 0; i < files.length; i++) {
@@ -123,8 +121,8 @@ new CommandDefinition('ls')
 			}
 		};
 		drawFiles(folderStructure, 0);
-		ws.allowedModes = [Modes.VIEW_MODE, Modes.COMMAND];
-		ws.currentDocument.setCanvasCoords(0, 0);
+		ws.currentDocument.allowedModes = [Modes.VIEW_MODE, Modes.COMMAND];
+		ws.setCanvasCoords(0, 0);
 		ws.currentDocument.setCursorCoords(0, 0);
 
 		// ws.elements.push(new Button(new Vector2(0, i), `load ${files[i]}`, files[i]));
@@ -134,9 +132,17 @@ new CommandDefinition('ls')
 	})
 	.register();
 
-new CommandDefinition('back')
+new CommandDefinition('close')
 	.addOverride(() => {
-		ws.loadElements('$tmp');
+		// ws.loadElements('$tmp');
+		ws.closeSubdocument();
 		return new Value(null, STATIC_TYPES.NULL);
 	})
+	.register();
+
+new CommandDefinition('subdoc')
+	.addOverride((params) => {
+		ws.openSubdocument(params[0].value as string);
+		return new Value(null, STATIC_TYPES.NULL);
+	}, STATIC_TYPES.STRING)
 	.register();

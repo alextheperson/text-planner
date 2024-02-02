@@ -1,7 +1,6 @@
 import { Command, parseExpression } from './commands';
 import { STATIC_TYPES, type Binding, Value } from './dataType';
 import { keymap } from './keymap';
-import { UserConsole } from './userConsole';
 import { workspace as ws } from './workspace';
 
 const FAST_MOVE_SPEED = 5;
@@ -54,7 +53,6 @@ interface Mode {
 class ViewMode implements Mode {
 	open() {
 		try {
-			ws.currentDocument.selected = ws.underCursor();
 			ws.render();
 		} catch {
 			/* empty */
@@ -70,8 +68,6 @@ class ViewMode implements Mode {
 			ws.currentDocument.modeManager.setMode(Modes.EDIT_MODE);
 		} else if (keymap.moveMode.includes(event.key)) {
 			ws.currentDocument.modeManager.setMode(Modes.MOVE_MODE);
-			ws.currentDocument.selected =
-				ws.currentDocument.elements[ws.currentDocument.elements.length - 1];
 		} else if (event.key == ':') {
 			ws.currentDocument.modeManager.setMode(Modes.COMMAND);
 		} else if (ws.currentDocument.selected !== null) {
@@ -81,7 +77,6 @@ class ViewMode implements Mode {
 				event
 			);
 		}
-		ws.currentDocument.selected = ws.underCursor();
 		ws.activeBindings = [];
 		ws.render();
 	}
@@ -91,7 +86,6 @@ class ViewMode implements Mode {
 			Math.floor(event.clientX / ws.characterWidth) + ws.canvasX,
 			Math.floor(event.clientY / ws.characterHeight) + ws.canvasY
 		);
-		ws.currentDocument.selected = ws.underCursor();
 		ws.render();
 	}
 }
@@ -100,7 +94,7 @@ class MoveMode implements Mode {
 	willAutoBind = true;
 
 	open() {
-		ws.currentDocument.selected = ws.underCursor();
+		ws.currentDocument.lockSelection();
 	}
 
 	close(): void {
@@ -108,6 +102,7 @@ class MoveMode implements Mode {
 			this.checkForBindings(true);
 		}
 		ws.activeBindings = [];
+		ws.currentDocument.unlockSelection();
 	}
 
 	input(event: KeyboardEvent) {
@@ -226,10 +221,10 @@ class MoveMode implements Mode {
 				) {
 					if (shouldBind) {
 						pair.x.setValue(
-							(parseExpression(`(get @i${shape?.id} "${pair2.x.name}")`) as Value).value as Command
+							(parseExpression(`(get @${shape?.id} "${pair2.x.name}")`) as Value).value as Command
 						);
 						pair.y.setValue(
-							(parseExpression(`(get @i${shape?.id} "${pair2.y.name}")`) as Value).value as Command
+							(parseExpression(`(get @${shape?.id} "${pair2.y.name}")`) as Value).value as Command
 						);
 					}
 					pairs.push({
@@ -283,7 +278,7 @@ class EditMode implements Mode {
 			ws.currentDocument.selected === null ||
 			hoveredElement instanceof ws.currentDocument.selected.constructor
 		) {
-			ws.currentDocument.selected = hoveredElement;
+			/* */
 		}
 		ws.render();
 	}
@@ -291,13 +286,13 @@ class EditMode implements Mode {
 
 class CommandMode implements Mode {
 	open() {
-		UserConsole.open();
-		UserConsole.input(':');
+		ws.console.open();
+		ws.console.input(':');
 		ws.render();
 	}
 
 	close() {
-		UserConsole.close();
+		ws.console.close();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -305,7 +300,7 @@ class CommandMode implements Mode {
 		if (keymap.viewMode.includes(event.key)) {
 			ws.currentDocument.modeManager.setMode(Modes.VIEW_MODE);
 		} else {
-			UserConsole.input(event.key);
+			ws.console.input(event.key);
 		}
 		ws.render();
 	}
@@ -324,7 +319,7 @@ class ModeManager {
 	mode: Modes = Modes.VIEW_MODE;
 
 	setMode(setTo: Modes) {
-		if (!ws.allowedModes.includes(setTo)) {
+		if (!ws.currentDocument.allowedModes.includes(setTo)) {
 			return;
 		}
 		this.currentMode.close();
