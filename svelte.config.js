@@ -8,6 +8,7 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
+		paths: { base: '/projects/planner' },
 		adapter: adapter()
 	}
 };
