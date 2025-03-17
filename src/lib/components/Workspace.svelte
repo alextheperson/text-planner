@@ -83,12 +83,12 @@
 	class="background-fill"
 	style:height={wp.canvasHeight * wp.characterHeight + 'px'}
 	style:width={wp.canvasWidth * wp.characterWidth + 'px'}
-/>
+></div>
 <div
 	class="background"
 	style:background-size="{wp.characterWidth}px {wp.characterHeight}px"
 	style:transform="translate(-{wp.characterWidth / 2}px, -{wp.characterHeight / 2}px)"
-/>
+></div>
 <pre class="workspace">{@html displayString}</pre>
 
 <div
@@ -97,7 +97,7 @@
 	style:top={cursorY + 'px'}
 	style:width={wp.characterWidth + 'px'}
 	style:height={wp.characterHeight + 1.5 + 'px'}
-/>
+></div>
 
 <style lang="scss">
 	.workspace {
