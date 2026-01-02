@@ -67,7 +67,7 @@ class Keymap {
 }
 
 const keymaps = {
-	querty: new Keymap(
+	qwerty: new Keymap(
 		['f', 'F'],
 		['d', 'D'],
 		['s', 'S'],
@@ -111,8 +111,8 @@ export let keymap =
 	keymaps[
 		browser
 			? ((JSON.parse(localStorage.getItem('$settings') ?? '{}')['keymap'] ??
-					'querty') as keyof typeof keymaps)
-			: 'querty'
+					'qwerty') as keyof typeof keymaps)
+			: 'qwerty'
 	];
 export function setKeymap(to: keyof typeof keymaps) {
 	keymap = keymaps[to];
