@@ -6,6 +6,16 @@ new CommandDefinition('add')
 		(params) => {
 			return new Value(
 				(params[0].value as number) + (params[1].value as number),
+				STATIC_TYPES.INT
+			);
+		},
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) + (params[1].value as number),
 				STATIC_TYPES.FLOAT
 			);
 		},
@@ -19,6 +29,16 @@ new CommandDefinition('sub')
 		(params) => {
 			return new Value(
 				(params[0].value as number) - (params[1].value as number),
+				STATIC_TYPES.INT
+			);
+		},
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) - (params[1].value as number),
 				STATIC_TYPES.FLOAT
 			);
 		},
@@ -28,6 +48,16 @@ new CommandDefinition('sub')
 	.register();
 
 new CommandDefinition('mult')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) * (params[1].value as number),
+				STATIC_TYPES.INT
+			);
+		},
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
 	.addOverride(
 		(params) => {
 			return new Value(
@@ -58,6 +88,16 @@ new CommandDefinition('exp')
 		(params) => {
 			return new Value(
 				(params[0].value as number) ** (params[1].value as number),
+				STATIC_TYPES.INT
+			);
+		},
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) ** (params[1].value as number),
 				STATIC_TYPES.FLOAT
 			);
 		},
@@ -67,6 +107,16 @@ new CommandDefinition('exp')
 	.register();
 
 new CommandDefinition('mod')
+	.addOverride(
+		(params) => {
+			return new Value(
+				(params[0].value as number) % (params[1].value as number),
+				STATIC_TYPES.INT
+			);
+		},
+		STATIC_TYPES.INT,
+		STATIC_TYPES.INT
+	)
 	.addOverride(
 		(params) => {
 			return new Value(
