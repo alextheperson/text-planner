@@ -20,7 +20,7 @@ new CommandDefinition('get')
 
 new CommandDefinition('bindables')
 	.addOverride((params) => {
-		const bindings = Object.keys((params[0].value as Shape).bindings);
+		const bindings = (params[0].value as Shape).bindings.map((b) => b.name);
 		return new Value(bindings.join(', '), STATIC_TYPES.STRING);
 	}, STATIC_TYPES.SHAPE)
 	.register();
