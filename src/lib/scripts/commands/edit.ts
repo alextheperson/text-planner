@@ -57,28 +57,20 @@ new CommandDefinition('border')
 				.filter((val) => val.name === 'corners/topLeft/x')
 				.at(0)
 				?.setValue(
-					new Command(
-						'get',
-						[new Value(selected, STATIC_TYPES.SHAPE), new Value('position/x', STATIC_TYPES.STRING)],
-						`:get @i${selected.id} "position/x"`
-					)
+					parseExpression(`(:sub (:get @${selected.id} "position/x") 1)`) as Command
 				);
 			rect.bindings
 				.filter((val) => val.name === 'corners/topLeft/y')
 				.at(0)
 				?.setValue(
-					new Command(
-						'get',
-						[new Value(selected, STATIC_TYPES.SHAPE), new Value('position/y', STATIC_TYPES.STRING)],
-						`:get @i${selected.id} "position/y"`
-					)
+					parseExpression(`(:sub (:get @${selected.id} "position/y") 1)`) as Command
 				);
 			rect.bindings
 				.filter((val) => val.name === 'corners/bottomRight/x')
 				.at(0)
 				?.setValue(
 					parseExpression(
-						`(:floor (:add (:get @i${selected.id} "position/x") (:get @i${selected.id} "size/width")))`
+						`(:add (:get @${selected.id} "position/x") (:get @${selected.id} "size/width"))`
 					) as Command
 				);
 			rect.bindings
@@ -86,7 +78,7 @@ new CommandDefinition('border')
 				.at(0)
 				?.setValue(
 					parseExpression(
-						`(:floor (:add (:get @i${selected.id} "position/y") (:get @i${selected.id} "size/height")))`
+						`(:add (:get @${selected.id} "position/y") (:get @${selected.id} "size/height"))`
 					) as Command
 				);
 			ws.elements.push(rect);
